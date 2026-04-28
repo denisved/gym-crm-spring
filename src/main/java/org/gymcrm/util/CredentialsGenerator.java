@@ -1,10 +1,13 @@
 package org.gymcrm.util;
 
+import ch.qos.logback.classic.Logger;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 import java.util.Random;
 
+@Slf4j
 @Component
 public class CredentialsGenerator {
 
@@ -34,17 +37,16 @@ public class CredentialsGenerator {
                     if (suffix > maxSuffix) {
                         maxSuffix = suffix;
                     }
-                } catch (NumberFormatException ignored) {
-                    // Ігноруємо, якщо суфікс не є числом
+                } catch (NumberFormatException e) {
+                    log.trace("Found non-numeric suffix for username, ignoring format exception: {}", e.getMessage());
                 }
             }
         }
 
         if (!exactMatchExists && maxSuffix == -1) {
-            return baseName; // Це перший користувач з таким ім'ям
+            return baseName;
         }
 
-        // Згідно з твоїм прикладом, якщо видалили mary.dou1, а mary.dou3 існує, наступний буде mary.dou4
         int nextSuffix = Math.max(maxSuffix, 0) + 1;
         return baseName + nextSuffix;
     }
