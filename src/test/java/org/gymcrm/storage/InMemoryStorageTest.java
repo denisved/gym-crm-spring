@@ -4,11 +4,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,10 +16,17 @@ class InMemoryStorageTest {
 
     private InMemoryStorage storage;
     private Path tempFilePath;
+    private Map<String, Map<Long, Object>> storageMap;
 
     @BeforeEach
     void setUp() throws IOException {
         storage = new InMemoryStorage();
+        storageMap = new HashMap<>();
+        storageMap.put("TRAINEES", new HashMap<>());
+        storageMap.put("TRAINERS", new HashMap<>());
+        storageMap.put("TRAININGS", new HashMap<>());
+        storage.setStorage(storageMap);
+        
         tempFilePath = Files.createTempFile("test_storage", ".json");
         ReflectionTestUtils.setField(storage, "filePath", tempFilePath.toString());
     }
