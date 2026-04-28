@@ -2,16 +2,17 @@ package org.gymcrm.storage;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
@@ -25,7 +26,12 @@ public class InMemoryStorage {
     private String filePath;
 
     @Getter
-    private Map<String, Map<Long, Object>> storage = new HashMap<>();
+    private Map<String, Map<Long, Object>> storage;
+
+    @Autowired
+    public void setStorage(Map<String, Map<Long, Object>> commonStorageMap) {
+        this.storage = commonStorageMap;
+    }
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -36,7 +42,6 @@ public class InMemoryStorage {
             try {
                 Map<String, Map<Long, Object>> rawStorage = mapper.readValue(file, new TypeReference<Map<String, Map<Long, Object>>>() {});
 
-                storage = new HashMap<>();
                 storage.put("TRAINERS", convertNamespace(rawStorage.get("TRAINERS"), Trainer.class));
                 storage.put("TRAINEES", convertNamespace(rawStorage.get("TRAINEES"), Trainee.class));
                 storage.put("TRAININGS", convertNamespace(rawStorage.get("TRAININGS"), Training.class));
@@ -65,7 +70,6 @@ public class InMemoryStorage {
     }
 
     private void initializeEmptyStorage() {
-        storage = new HashMap<>();
         storage.put("TRAINERS", new HashMap<>());
         storage.put("TRAINEES", new HashMap<>());
         storage.put("TRAININGS", new HashMap<>());
