@@ -6,9 +6,7 @@ import org.gymcrm.storage.InMemoryStorage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Repository
@@ -22,14 +20,19 @@ public class TraineeDao {
     }
 
     public Trainee save(Trainee trainee) {
-        Map<Long, Object> traineesMap = storage.getStorage().get(NAMESPACE);
+        Map<Long, Object> traineesMap = Optional.ofNullable(storage.getStorage().get(NAMESPACE))
+                .orElseGet(HashMap::new);
 
-        if (trainee.getId() == null) {
-            trainee.setId(generateNextId(traineesMap));
-            log.debug("Assigned new ID {} for Trainee", trainee.getId());
-        }
+        Long traineeId = Optional.ofNullable(trainee.getId())
+                .orElseGet(() -> {
+                    Long newId = generateNextId(traineesMap);
+                    log.debug("Assigned new ID {} for Trainee", newId);
+                    return newId;
+                });
 
-        traineesMap.put(trainee.getId(), trainee);
+        trainee.setId(traineeId);
+        traineesMap.put(traineeId, trainee);
+
         return trainee;
     }
 

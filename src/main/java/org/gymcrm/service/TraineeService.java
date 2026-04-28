@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -65,23 +66,24 @@ public class TraineeService {
     }
 
     public void deleteTrainee(Long id) {
-        Trainee trainee = traineeDao.findById(id);
-        if (trainee != null) {
-            traineeDao.delete(id);
-            log.info("Trainee deleted: ID [{}], Username [{}]", id, trainee.getUsername());
-        } else {
-            log.warn("Attempted to delete Trainee with ID: [{}], but it was not found", id);
-        }
+        Optional.ofNullable(traineeDao.findById(id)).ifPresentOrElse(
+                trainee -> {
+                    traineeDao.delete(id);
+                    log.info("Trainee deleted: ID [{}], Username [{}]", id, trainee.getUsername());
+                },
+                () -> log.warn("Attempted to delete Trainee with ID: [{}], but it was not found", id)
+        );
     }
 
     public Trainee getTrainee(Long id) {
-        Trainee trainee = traineeDao.findById(id);
-        if (trainee != null) {
-            log.debug("Fetched Trainee with ID: [{}]", id);
-        } else {
-            log.warn("Trainee with ID: [{}] not found", id);
-        }
-        return trainee;
+        Optional<Trainee> traineeOpt = Optional.ofNullable(traineeDao.findById(id));
+
+        traineeOpt.ifPresentOrElse(
+                t -> log.debug("Fetched Trainee with ID: [{}]", id),
+                () -> log.warn("Trainee with ID: [{}] not found", id)
+        );
+
+        return traineeOpt.orElse(null);
     }
 
     public List<Trainee> getAllTrainees() {
