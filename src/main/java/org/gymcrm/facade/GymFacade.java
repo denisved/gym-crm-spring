@@ -3,7 +3,6 @@ package org.gymcrm.facade;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
-import org.gymcrm.model.TrainingType;
 import org.gymcrm.service.TraineeService;
 import org.gymcrm.service.TrainerService;
 import org.gymcrm.service.TrainingService;
@@ -34,31 +33,79 @@ public class GymFacade {
         return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
-    public Trainer getTrainer(Long id) {
-        return trainerService.getTrainer(id);
+    public boolean authenticateTrainee(String username, String password) {
+        return traineeService.authenticate(username, password);
     }
 
-    public Trainer updateTrainer(Trainer trainer) {
-        return trainerService.updateTrainer(trainer);
+    public boolean authenticateTrainer(String username, String password) {
+        return trainerService.authenticate(username, password);
     }
 
-    public void deleteTrainee(Long id) {
-        traineeService.deleteTrainee(id);
+    public Trainee getTrainee(String username) {
+        return traineeService.getByUsername(username);
     }
 
-    public Training createTraining(Long traineeId, Long trainerId, String trainingName, TrainingType type, Date date, Number duration) {
-        return trainingService.createTraining(traineeId, trainerId, trainingName, type, date, duration);
+    public Trainer getTrainer(String username) {
+        return trainerService.getByUsername(username);
+    }
+
+    public void changeTraineePassword(String username, String oldPassword, String newPassword) {
+        traineeService.changePassword(username, oldPassword, newPassword);
+    }
+
+    public void changeTrainerPassword(String username, String oldPassword, String newPassword) {
+        trainerService.changePassword(username, oldPassword, newPassword);
+    }
+
+    public Trainee updateTrainee(Trainee trainee) {
+        return traineeService.updateTrainee(trainee);
+    }
+
+    public Trainer updateTrainerSpecialization(String username, String specializationName) {
+        return trainerService.updateTrainerSpecialization(username, specializationName);
+    }
+
+    public void toggleTraineeActivation(String username, boolean isActive) {
+        traineeService.toggleActivation(username, isActive);
+    }
+
+    public void toggleTrainerActivation(String username, boolean isActive) {
+        trainerService.toggleActivation(username, isActive);
+    }
+
+    public void deleteTrainee(String username) {
+        traineeService.deleteByUsername(username);
+    }
+
+    public List<Training> getTraineeTrainings(String username, Date from, Date to, String trainerName, String type) {
+        return trainingService.getTraineeTrainings(username, from, to, trainerName, type);
+    }
+
+    public List<Training> getTrainerTrainings(String username, Date from, Date to, String traineeName) {
+        return trainingService.getTrainerTrainings(username, from, to, traineeName);
+    }
+
+    public Training createTraining(String traineeUsername, String trainerUsername, String name, Date date, Number duration) {
+        return trainingService.createTraining(traineeUsername, trainerUsername, name, date, duration);
+    }
+
+    public List<Trainer> getUnassignedTrainers(String traineeUsername) {
+        return trainerService.getUnassignedTrainers(traineeUsername);
+    }
+
+    public List<Trainer> updateTraineeTrainersList(String traineeUsername, List<String> trainerUsernames) {
+        return traineeService.updateTrainersList(traineeUsername, trainerUsernames);
     }
 
     public List<Trainer> getAllTrainers() {
-        return trainerService.getAllTrainers();
+        return trainerService.findAll();
     }
 
     public List<Trainee> getAllTrainees() {
-        return traineeService.getAllTrainees();
+        return traineeService.findAll();
     }
 
     public List<Training> getAllTrainings() {
-        return trainingService.getAllTrainings();
+        return trainingService.findAll();
     }
 }
