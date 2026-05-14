@@ -1,92 +1,138 @@
 package org.gymcrm.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.gymcrm.dao.TraineeDao;
-import org.gymcrm.dao.TrainerDao;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
+import org.gymcrm.model.User;
+import org.gymcrm.repository.TraineeRepository;
+import org.gymcrm.repository.TrainerRepository;
+import org.gymcrm.repository.UserRepository;
 import org.gymcrm.util.CredentialsGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
 public class TraineeService {
 
-    private TraineeDao traineeDao;
-    private TrainerDao trainerDao;
-    private CredentialsGenerator credentialsGenerator;
+    private final TraineeRepository traineeRepository;
+    private final TrainerRepository trainerRepository;
+    private final UserRepository userRepository;
+    private final CredentialsGenerator credentialsGenerator;
 
     @Autowired
-    public void setTraineeDao(TraineeDao traineeDao) {
-        this.traineeDao = traineeDao;
-    }
-
-    @Autowired
-    public void setTrainerDao(TrainerDao trainerDao) {
-        this.trainerDao = trainerDao;
-    }
-
-    @Autowired
-    public void setCredentialsGenerator(CredentialsGenerator credentialsGenerator) {
+    public TraineeService(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
+                          UserRepository userRepository, CredentialsGenerator credentialsGenerator) {
+        this.traineeRepository = traineeRepository;
+        this.trainerRepository = trainerRepository;
+        this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
     }
 
+    private void validateName(String name, String fieldName) {
+        if (name == null || name.trim().length() < 3) {
+            throw new IllegalArgumentException(fieldName + " має містити мінімум 3 символи.");
+        }
+    }
+
+    @Transactional
     public Trainee createTrainee(String firstName, String lastName, Date dateOfBirth, String address) {
+        validateName(firstName, "Ім'я учня");
+        validateName(lastName, "Прізвище учня");
+
+        if (dateOfBirth != null && dateOfBirth.after(new Date())) {
+            throw new IllegalArgumentException("Помилка: Дата народження не може бути в майбутньому часі.");
+        }
+
+        List<String> existingUsernames = userRepository.findAll().stream().map(User::getUsername).toList();
+        String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsernames);
+        String password = credentialsGenerator.generatePassword();
+
         Trainee trainee = new Trainee();
-        trainee.setFirstName(firstName);
-        trainee.setLastName(lastName);
-        trainee.setDateOfBirth(dateOfBirth);
-        trainee.setAddress(address);
+        trainee.setFirstName(firstName.trim());
+        trainee.setLastName(lastName.trim());
+        trainee.setUsername(username);
+        trainee.setPassword(password);
         trainee.setActive(true);
+        trainee.setDateOfBirth(dateOfBirth);
+        trainee.setAddress(address != null ? address.trim() : null);
 
-        List<String> existingUsernames = Stream.concat(
-                trainerDao.findAll().stream().map(Trainer::getUsername),
-                traineeDao.findAll().stream().map(Trainee::getUsername)
-        ).toList();
-
-        trainee.setUsername(credentialsGenerator.generateUsername(firstName, lastName, existingUsernames));
-        trainee.setPassword(credentialsGenerator.generatePassword());
-
-        traineeDao.save(trainee);
-        log.info("Trainee created: ID [{}], Username [{}], Address [{}]",
-                trainee.getId(), trainee.getUsername(), trainee.getAddress());
-        return trainee;
+        log.info("Creating trainee with username: {}", username);
+        return traineeRepository.save(trainee);
     }
 
+    @Transactional(readOnly = true)
+    public boolean authenticate(String username, String password) {
+        return traineeRepository.findByUsername(username)
+                .map(trainee -> trainee.getPassword().equals(password))
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public Trainee getByUsername(String username) {
+        return traineeRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Trainee not found: " + username));
+    }
+
+    @Transactional
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        if (authenticate(username, oldPassword)) {
+            Trainee trainee = getByUsername(username);
+            trainee.setPassword(newPassword);
+            traineeRepository.save(trainee);
+            log.info("Password changed successfully for trainee: {}", username);
+        } else {
+            log.warn("Password change failed for {}: incorrect old password", username);
+            throw new IllegalArgumentException("Authentication failed");
+        }
+    }
+
+    @Transactional
     public Trainee updateTrainee(Trainee trainee) {
-        traineeDao.save(trainee);
-        log.info("Trainee updated: ID [{}], Username [{}]", trainee.getId(), trainee.getUsername());
-        return trainee;
+        log.info("Updating trainee profile: {}", trainee.getUsername());
+        return traineeRepository.save(trainee);
     }
 
-    public void deleteTrainee(Long id) {
-        Optional.ofNullable(traineeDao.findById(id)).ifPresentOrElse(
-                trainee -> {
-                    traineeDao.delete(id);
-                    log.info("Trainee deleted: ID [{}], Username [{}]", id, trainee.getUsername());
-                },
-                () -> log.warn("Attempted to delete Trainee with ID: [{}], but it was not found", id)
-        );
+    @Transactional
+    public void toggleActivation(String username, boolean isActive) {
+        Trainee trainee = getByUsername(username);
+        trainee.setActive(isActive);
+        traineeRepository.save(trainee);
+        log.info("Trainee {} activation status changed to: {}", username, isActive);
     }
 
-    public Trainee getTrainee(Long id) {
-        Optional<Trainee> traineeOpt = Optional.ofNullable(traineeDao.findById(id));
-
-        traineeOpt.ifPresentOrElse(
-                t -> log.debug("Fetched Trainee with ID: [{}]", id),
-                () -> log.warn("Trainee with ID: [{}] not found", id)
-        );
-
-        return traineeOpt.orElse(null);
+    @Transactional
+    public void deleteByUsername(String username) {
+        traineeRepository.deleteByUsername(username);
+        log.info("Trainee deleted: {}", username);
     }
 
-    public List<Trainee> getAllTrainees() {
-        return traineeDao.findAll();
+    @Transactional
+    public List<Trainer> updateTrainersList(String traineeUsername, List<String> trainerUsernames) {
+        Trainee trainee = getByUsername(traineeUsername);
+
+        trainee.getTrainers().clear();
+
+        if (trainerUsernames != null && !trainerUsernames.isEmpty()) {
+            for (String tName : trainerUsernames) {
+                trainerRepository.findByUsername(tName.trim()).ifPresent(trainer -> {
+                    trainee.getTrainers().add(trainer);
+                });
+            }
+        }
+
+        traineeRepository.save(trainee);
+        log.info("Trainers list updated for trainee: {}", traineeUsername);
+        return trainee.getTrainers();
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<Trainee> findAll() {
+        return traineeRepository.findAll();
     }
 }
