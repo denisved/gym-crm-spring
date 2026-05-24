@@ -1,8 +1,12 @@
 package org.gymcrm.service;
 
-import org.gymcrm.dao.TrainingDao;
+import org.gymcrm.model.Trainee;
+import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
 import org.gymcrm.model.TrainingType;
+import org.gymcrm.repository.TraineeRepository;
+import org.gymcrm.repository.TrainerRepository;
+import org.gymcrm.repository.TrainingRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,65 +26,125 @@ import static org.mockito.Mockito.*;
 class TrainingServiceTest {
 
     @Mock
-    private TrainingDao trainingDao;
+    private TrainingRepository trainingRepository;
+    @Mock
+    private TraineeRepository traineeRepository;
+    @Mock
+    private TrainerRepository trainerRepository;
+    @Mock
+    private ValidationService validationService;
 
     @InjectMocks
     private TrainingService trainingService;
 
+    private Trainee trainee;
+    private Trainer trainer;
+    private Training training;
+
     @BeforeEach
     void setUp() {
-        trainingService.setTrainingDao(trainingDao);
+        trainee = new Trainee();
+        trainee.setUsername("John.Doe");
+
+        trainer = new Trainer();
+        trainer.setUsername("Jane.Smith");
+        TrainingType type = new TrainingType();
+        type.setTrainingTypeName("Yoga");
+        trainer.setSpecialization(type);
+
+        training = new Training();
+        training.setTrainee(trainee);
+        training.setTrainer(trainer);
+        training.setTrainingName("Morning Yoga");
+        training.setTrainingDate(new Date());
+        training.setTrainingDuration(60);
+
+        lenient().doNothing().when(validationService).validateTraining(anyString(), any(Date.class), any(Number.class));
     }
 
     @Test
-    void testCreateTraining() {
-        Long traineeId = 1L;
-        Long trainerId = 2L;
-        String name = "Morning Session";
-        TrainingType type = TrainingType.YOGA;
-        Date date = new Date();
-        Number duration = 60;
+    void testCreateTraining_Success() {
+        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        when(trainingRepository.save(any(Training.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        Training created = trainingService.createTraining(traineeId, trainerId, name, type, date, duration);
+        Training created = trainingService.createTraining("John.Doe", "Jane.Smith", "Morning Yoga", new Date(), 60);
 
         assertNotNull(created);
-        assertEquals(traineeId, created.getTraineeId());
-        assertEquals(trainerId, created.getTrainerId());
-        assertEquals(name, created.getTrainingName());
-        assertEquals(type, created.getTrainingType());
-        assertEquals(date, created.getTrainingDate());
-        assertEquals(duration, created.getTrainingDuration());
-
-        verify(trainingDao).save(any(Training.class));
+        assertEquals("Morning Yoga", created.getTrainingName());
+        assertEquals(trainee, created.getTrainee());
+        assertEquals(trainer, created.getTrainer());
+        verify(trainingRepository).save(any(Training.class));
     }
 
     @Test
-    void testGetTraining_Existing() {
-        Training training = new Training();
-        when(trainingDao.findById(3L)).thenReturn(training);
-
-        Training result = trainingService.getTraining(3L);
-
-        assertEquals(training, result);
+    void testCreateTraining_InvalidName() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateTraining(eq("Yo"), any(Date.class), any(Number.class));
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainingService.createTraining("John.Doe", "Jane.Smith", "Yo", new Date(), 60)
+        );
     }
 
     @Test
-    void testGetTraining_NotExisting() {
-        when(trainingDao.findById(3L)).thenReturn(null);
-
-        Training result = trainingService.getTraining(3L);
-
-        assertNull(result);
+    void testCreateTraining_InvalidDuration() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateTraining(anyString(), any(Date.class), eq(0));
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainingService.createTraining("John.Doe", "Jane.Smith", "Morning Yoga", new Date(), 0)
+        );
     }
 
     @Test
-    void testGetAllTrainings() {
-        Training training = new Training();
-        when(trainingDao.findAll()).thenReturn(List.of(training));
+    void testGetTraineeTrainings() {
+        List<Training> trainings = List.of(training);
+        when(trainingRepository.getTraineeTrainingsByCriteria(anyString(), any(Date.class), any(Date.class), anyString(), anyString()))
+                .thenReturn(trainings);
 
-        List<Training> result = trainingService.getAllTrainings();
+        List<Training> result = trainingService.getTraineeTrainings("John.Doe", null, null, null, null);
 
-        assertEquals(1, result.size());
-        assertEquals(training, result.get(0));
+        assertEquals(trainings, result);
+    }
+
+    @Test
+    void testGetTrainerTrainings() {
+        List<Training> trainings = List.of(training);
+        when(trainingRepository.getTrainerTrainingsByCriteria(anyString(), any(Date.class), any(Date.class), anyString()))
+                .thenReturn(trainings);
+
+        List<Training> result = trainingService.getTrainerTrainings("Jane.Smith", null, null, null);
+
+        assertEquals(trainings, result);
+    }
+
+    @Test
+    void testFindAll() {
+        List<Training> trainings = List.of(training);
+        when(trainingRepository.findAll()).thenReturn(trainings);
+        assertEquals(trainings, trainingService.findAll());
+    }
+
+    @Test
+    void testGetTraineeTrainings_WithFilters() {
+        List<Training> trainings = List.of(training);
+        Date from = new Date();
+        Date to = new Date();
+        when(trainingRepository.getTraineeTrainingsByCriteria("John.Doe", from, to, "Jane.Smith", "Yoga"))
+                .thenReturn(trainings);
+
+        List<Training> result = trainingService.getTraineeTrainings("John.Doe", from, to, "Jane.Smith", "Yoga");
+
+        assertEquals(trainings, result);
+    }
+
+    @Test
+    void testGetTrainerTrainings_WithFilters() {
+        List<Training> trainings = List.of(training);
+        Date from = new Date();
+        Date to = new Date();
+        when(trainingRepository.getTrainerTrainingsByCriteria("Jane.Smith", from, to, "John.Doe"))
+                .thenReturn(trainings);
+
+        List<Training> result = trainingService.getTrainerTrainings("Jane.Smith", from, to, "John.Doe");
+
+        assertEquals(trainings, result);
     }
 }

@@ -1,21 +1,37 @@
 package org.gymcrm.model;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
 
-@Getter
-@Setter
-@ToString
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
+@Entity
+@Table(name = "users")
+@Inheritance(strategy = InheritanceType.JOINED)
 public abstract class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @NotNull
+    @Column(name = "first_name", nullable = false)
     private String firstName;
+
+    @NotNull
+    @Column(name = "last_name", nullable = false)
     private String lastName;
+
+    @NotNull
+    @Column(unique = true, nullable = false)
     private String username;
+
+    @NotNull
+    @Column(nullable = false)
     private String password;
+
+    @NotNull
+    @Column(name = "is_active", nullable = false)
     private boolean isActive;
 }

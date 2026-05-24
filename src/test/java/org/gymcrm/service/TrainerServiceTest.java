@@ -1,9 +1,10 @@
 package org.gymcrm.service;
 
-import org.gymcrm.dao.TraineeDao;
-import org.gymcrm.dao.TrainerDao;
-import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
+import org.gymcrm.model.TrainingType;
+import org.gymcrm.repository.TrainerRepository;
+import org.gymcrm.repository.TrainingTypeRepository;
+import org.gymcrm.repository.UserRepository;
 import org.gymcrm.util.CredentialsGenerator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,98 +13,122 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TrainerServiceTest {
 
     @Mock
-    private TrainerDao trainerDao;
-
+    private TrainerRepository trainerRepository;
     @Mock
-    private TraineeDao traineeDao;
-
+    private UserRepository userRepository;
     @Mock
     private CredentialsGenerator credentialsGenerator;
+    @Mock
+    private TrainingTypeRepository trainingTypeRepository;
+    @Mock
+    private ValidationService validationService;
 
     @InjectMocks
     private TrainerService trainerService;
 
+    private Trainer trainer;
+    private TrainingType trainingType;
+
     @BeforeEach
     void setUp() {
-        trainerService.setTrainerDao(trainerDao);
-        trainerService.setTraineeDao(traineeDao);
-        trainerService.setCredentialsGenerator(credentialsGenerator);
+        trainingType = new TrainingType();
+        trainingType.setTrainingTypeName("Yoga");
+
+        trainer = new Trainer();
+        trainer.setFirstName("Jane");
+        trainer.setLastName("Smith");
+        trainer.setUsername("Jane.Smith");
+        trainer.setPassword("password");
+        trainer.setActive(true);
+        trainer.setSpecialization(trainingType);
+
+        lenient().doNothing().when(validationService).validateName(anyString(), anyString());
     }
 
     @Test
-    void testCreateTrainer() {
-        String firstName = "Jane";
-        String lastName = "Smith";
-        String specialization = "Yoga";
+    void testCreateTrainer_Success() {
+        when(userRepository.findAll()).thenReturn(new ArrayList<>());
+        when(credentialsGenerator.generateUsername(anyString(), anyString(), anyList())).thenReturn("Jane.Smith");
+        when(credentialsGenerator.generatePassword()).thenReturn("randomPass");
+        when(trainingTypeRepository.findByTrainingTypeNameIgnoreCase("Yoga")).thenReturn(Optional.of(trainingType));
+        when(trainerRepository.save(any(Trainer.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        when(trainerDao.findAll()).thenReturn(List.of());
-        when(traineeDao.findAll()).thenReturn(List.of());
-        when(credentialsGenerator.generateUsername(eq(firstName), eq(lastName), anyList())).thenReturn("Jane.Smith");
-        when(credentialsGenerator.generatePassword()).thenReturn("pass456");
-
-        Trainer created = trainerService.createTrainer(firstName, lastName, specialization);
+        Trainer created = trainerService.createTrainer("Jane", "Smith", "Yoga");
 
         assertNotNull(created);
-        assertEquals(firstName, created.getFirstName());
-        assertEquals(lastName, created.getLastName());
-        assertEquals(specialization, created.getSpecialization());
-        assertTrue(created.isActive());
-        assertEquals("Jane.Smith", created.getUsername());
-        assertEquals("pass456", created.getPassword());
-
-        verify(trainerDao).save(any(Trainer.class));
+        assertEquals("Jane", created.getFirstName());
+        assertEquals("Yoga", created.getSpecialization().getTrainingTypeName());
+        verify(trainerRepository).save(any(Trainer.class));
     }
 
     @Test
-    void testUpdateTrainer() {
-        Trainer trainer = new Trainer();
-        trainer.setId(2L);
-
-        Trainer updated = trainerService.updateTrainer(trainer);
-
-        assertEquals(trainer, updated);
-        verify(trainerDao).save(trainer);
+    void testCreateTrainer_InvalidSpecialization() {
+        when(trainingTypeRepository.findByTrainingTypeNameIgnoreCase("Unknown")).thenReturn(Optional.empty());
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.createTrainer("Jane", "Smith", "Unknown")
+        );
     }
 
     @Test
-    void testGetTrainer_Existing() {
-        Trainer trainer = new Trainer();
-        when(trainerDao.findById(2L)).thenReturn(trainer);
-
-        Trainer result = trainerService.getTrainer(2L);
-
-        assertEquals(trainer, result);
+    void testGetByUsername_Success() {
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        Trainer found = trainerService.getByUsername("Jane.Smith");
+        assertEquals(trainer, found);
     }
 
     @Test
-    void testGetTrainer_NotExisting() {
-        when(trainerDao.findById(2L)).thenReturn(null);
-
-        Trainer result = trainerService.getTrainer(2L);
-
-        assertNull(result);
+    void testChangePassword_Success() {
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        trainerService.changePassword("Jane.Smith", "password", "newPass");
+        assertEquals("newPass", trainer.getPassword());
+        verify(trainerRepository).save(trainer);
     }
 
     @Test
-    void testGetAllTrainers() {
-        Trainer trainer = new Trainer();
-        when(trainerDao.findAll()).thenReturn(List.of(trainer));
+    void testUpdateTrainerSpecialization_Success() {
+        TrainingType newType = new TrainingType();
+        newType.setTrainingTypeName("Pilates");
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        when(trainingTypeRepository.findByTrainingTypeNameIgnoreCase("Pilates")).thenReturn(Optional.of(newType));
+        when(trainerRepository.save(any(Trainer.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        List<Trainer> result = trainerService.getAllTrainers();
+        Trainer updated = trainerService.updateTrainerSpecialization("Jane.Smith", "Pilates");
 
-        assertEquals(1, result.size());
-        assertEquals(trainer, result.get(0));
+        assertEquals("Pilates", updated.getSpecialization().getTrainingTypeName());
+        verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testToggleActivation() {
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        trainerService.toggleActivation("Jane.Smith");
+        assertFalse(trainer.isActive());
+        verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testGetUnassignedTrainers() {
+        List<Trainer> unassigned = List.of(trainer);
+        when(trainerRepository.getUnassignedTrainers("traineeUser")).thenReturn(unassigned);
+        assertEquals(unassigned, trainerService.getUnassignedTrainers("traineeUser"));
+    }
+
+    @Test
+    void testFindAll() {
+        List<Trainer> trainers = List.of(trainer);
+        when(trainerRepository.findAll()).thenReturn(trainers);
+        assertEquals(trainers, trainerService.findAll());
     }
 }

@@ -3,7 +3,7 @@ package org.gymcrm.facade;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
-import org.gymcrm.model.TrainingType;
+import org.gymcrm.service.AuthService;
 import org.gymcrm.service.TraineeService;
 import org.gymcrm.service.TrainerService;
 import org.gymcrm.service.TrainingService;
@@ -18,12 +18,17 @@ public class GymFacade {
     private final TrainerService trainerService;
     private final TraineeService traineeService;
     private final TrainingService trainingService;
+    private final AuthService authService;
 
     @Autowired
-    public GymFacade(TrainerService trainerService, TraineeService traineeService, TrainingService trainingService) {
+    public GymFacade(TrainerService trainerService,
+                     TraineeService traineeService,
+                     TrainingService trainingService,
+                     AuthService authService) {
         this.trainerService = trainerService;
         this.traineeService = traineeService;
         this.trainingService = trainingService;
+        this.authService = authService;
     }
 
     public Trainer createTrainer(String firstName, String lastName, String specialization) {
@@ -34,31 +39,75 @@ public class GymFacade {
         return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
-    public Trainer getTrainer(Long id) {
-        return trainerService.getTrainer(id);
+    public boolean authenticate(String username, String password) {
+        return authService.authenticate(username, password);
     }
 
-    public Trainer updateTrainer(Trainer trainer) {
-        return trainerService.updateTrainer(trainer);
+    public Trainee getTrainee(String username) {
+        return traineeService.getByUsername(username);
     }
 
-    public void deleteTrainee(Long id) {
-        traineeService.deleteTrainee(id);
+    public Trainer getTrainer(String username) {
+        return trainerService.getByUsername(username);
     }
 
-    public Training createTraining(Long traineeId, Long trainerId, String trainingName, TrainingType type, Date date, Number duration) {
-        return trainingService.createTraining(traineeId, trainerId, trainingName, type, date, duration);
+    public void changeTraineePassword(String username, String oldPassword, String newPassword) {
+        traineeService.changePassword(username, oldPassword, newPassword);
+    }
+
+    public void changeTrainerPassword(String username, String oldPassword, String newPassword) {
+        trainerService.changePassword(username, oldPassword, newPassword);
+    }
+
+    public Trainee updateTrainee(Trainee trainee) {
+        return traineeService.updateTrainee(trainee);
+    }
+
+    public Trainer updateTrainerSpecialization(String username, String specializationName) {
+        return trainerService.updateTrainerSpecialization(username, specializationName);
+    }
+
+    public void toggleTraineeActivation(String username) {
+        traineeService.toggleActivation(username);
+    }
+
+    public void toggleTrainerActivation(String username) {
+        trainerService.toggleActivation(username);
+    }
+
+    public void deleteTrainee(String username) {
+        traineeService.deleteByUsername(username);
+    }
+
+    public List<Training> getTraineeTrainings(String username, Date from, Date to, String trainerName, String type) {
+        return trainingService.getTraineeTrainings(username, from, to, trainerName, type);
+    }
+
+    public List<Training> getTrainerTrainings(String username, Date from, Date to, String traineeName) {
+        return trainingService.getTrainerTrainings(username, from, to, traineeName);
+    }
+
+    public Training createTraining(String traineeUsername, String trainerUsername, String name, Date date, Number duration) {
+        return trainingService.createTraining(traineeUsername, trainerUsername, name, date, duration);
+    }
+
+    public List<Trainer> getUnassignedTrainers(String traineeUsername) {
+        return trainerService.getUnassignedTrainers(traineeUsername);
+    }
+
+    public List<Trainer> updateTraineeTrainersList(String traineeUsername, List<String> trainerUsernames) {
+        return traineeService.updateTrainersList(traineeUsername, trainerUsernames);
     }
 
     public List<Trainer> getAllTrainers() {
-        return trainerService.getAllTrainers();
+        return trainerService.findAll();
     }
 
     public List<Trainee> getAllTrainees() {
-        return traineeService.getAllTrainees();
+        return traineeService.findAll();
     }
 
     public List<Training> getAllTrainings() {
-        return trainingService.getAllTrainings();
+        return trainingService.findAll();
     }
 }

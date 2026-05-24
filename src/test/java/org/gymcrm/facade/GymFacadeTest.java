@@ -3,11 +3,10 @@ package org.gymcrm.facade;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
-import org.gymcrm.model.TrainingType;
+import org.gymcrm.service.AuthService;
 import org.gymcrm.service.TraineeService;
 import org.gymcrm.service.TrainerService;
 import org.gymcrm.service.TrainingService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,20 +16,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Date;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class GymFacadeTest {
 
     @Mock
-    private TrainerService trainerService;
-
-    @Mock
     private TraineeService traineeService;
-
+    @Mock
+    private TrainerService trainerService;
     @Mock
     private TrainingService trainingService;
+    @Mock
+    private AuthService authService;
 
     @InjectMocks
     private GymFacade gymFacade;
@@ -38,97 +37,145 @@ class GymFacadeTest {
     @Test
     void testCreateTrainer() {
         Trainer trainer = new Trainer();
-        when(trainerService.createTrainer("John", "Doe", "Yoga")).thenReturn(trainer);
-
-        Trainer result = gymFacade.createTrainer("John", "Doe", "Yoga");
-
+        when(trainerService.createTrainer("Jane", "Smith", "Yoga")).thenReturn(trainer);
+        Trainer result = gymFacade.createTrainer("Jane", "Smith", "Yoga");
         assertEquals(trainer, result);
-        verify(trainerService).createTrainer("John", "Doe", "Yoga");
+        verify(trainerService).createTrainer("Jane", "Smith", "Yoga");
     }
 
     @Test
     void testCreateTrainee() {
         Trainee trainee = new Trainee();
-        Date date = new Date();
-        when(traineeService.createTrainee("Jane", "Smith", date, "123 Ave")).thenReturn(trainee);
-
-        Trainee result = gymFacade.createTrainee("Jane", "Smith", date, "123 Ave");
-
+        Date dob = new Date();
+        when(traineeService.createTrainee("John", "Doe", dob, "Addr")).thenReturn(trainee);
+        Trainee result = gymFacade.createTrainee("John", "Doe", dob, "Addr");
         assertEquals(trainee, result);
-        verify(traineeService).createTrainee("Jane", "Smith", date, "123 Ave");
+        verify(traineeService).createTrainee("John", "Doe", dob, "Addr");
+    }
+
+    @Test
+    void testAuthenticate() {
+        when(authService.authenticate("user", "pass")).thenReturn(true);
+        assertTrue(gymFacade.authenticate("user", "pass"));
+        verify(authService).authenticate("user", "pass");
+    }
+
+    @Test
+    void testGetTrainee() {
+        Trainee trainee = new Trainee();
+        when(traineeService.getByUsername("user")).thenReturn(trainee);
+        assertEquals(trainee, gymFacade.getTrainee("user"));
     }
 
     @Test
     void testGetTrainer() {
         Trainer trainer = new Trainer();
-        when(trainerService.getTrainer(1L)).thenReturn(trainer);
-
-        Trainer result = gymFacade.getTrainer(1L);
-
-        assertEquals(trainer, result);
-        verify(trainerService).getTrainer(1L);
+        when(trainerService.getByUsername("user")).thenReturn(trainer);
+        assertEquals(trainer, gymFacade.getTrainer("user"));
     }
 
     @Test
-    void testUpdateTrainer() {
+    void testChangeTraineePassword() {
+        gymFacade.changeTraineePassword("user", "old", "new");
+        verify(traineeService).changePassword("user", "old", "new");
+    }
+
+    @Test
+    void testChangeTrainerPassword() {
+        gymFacade.changeTrainerPassword("user", "old", "new");
+        verify(trainerService).changePassword("user", "old", "new");
+    }
+
+    @Test
+    void testUpdateTrainee() {
+        Trainee trainee = new Trainee();
+        when(traineeService.updateTrainee(trainee)).thenReturn(trainee);
+        assertEquals(trainee, gymFacade.updateTrainee(trainee));
+    }
+
+    @Test
+    void testUpdateTrainerSpecialization() {
         Trainer trainer = new Trainer();
-        when(trainerService.updateTrainer(trainer)).thenReturn(trainer);
+        when(trainerService.updateTrainerSpecialization("user", "Yoga")).thenReturn(trainer);
+        assertEquals(trainer, gymFacade.updateTrainerSpecialization("user", "Yoga"));
+    }
 
-        Trainer result = gymFacade.updateTrainer(trainer);
+    @Test
+    void testToggleTraineeActivation() {
+        gymFacade.toggleTraineeActivation("user");
+        verify(traineeService).toggleActivation("user");
+    }
 
-        assertEquals(trainer, result);
-        verify(trainerService).updateTrainer(trainer);
+    @Test
+    void testToggleTrainerActivation() {
+        gymFacade.toggleTrainerActivation("user");
+        verify(trainerService).toggleActivation("user");
     }
 
     @Test
     void testDeleteTrainee() {
-        gymFacade.deleteTrainee(2L);
-        verify(traineeService).deleteTrainee(2L);
+        gymFacade.deleteTrainee("user");
+        verify(traineeService).deleteByUsername("user");
+    }
+
+    @Test
+    void testGetTraineeTrainings() {
+        List<Training> trainings = List.of(new Training());
+        Date from = new Date();
+        Date to = new Date();
+        when(trainingService.getTraineeTrainings("user", from, to, "trainer", "type")).thenReturn(trainings);
+        assertEquals(trainings, gymFacade.getTraineeTrainings("user", from, to, "trainer", "type"));
+    }
+
+    @Test
+    void testGetTrainerTrainings() {
+        List<Training> trainings = List.of(new Training());
+        Date from = new Date();
+        Date to = new Date();
+        when(trainingService.getTrainerTrainings("user", from, to, "trainee")).thenReturn(trainings);
+        assertEquals(trainings, gymFacade.getTrainerTrainings("user", from, to, "trainee"));
     }
 
     @Test
     void testCreateTraining() {
         Training training = new Training();
-        TrainingType type = TrainingType.FITNESS;
         Date date = new Date();
-        when(trainingService.createTraining(1L, 2L, "Morning", type, date, 60)).thenReturn(training);
+        when(trainingService.createTraining("trainee", "trainer", "name", date, 60)).thenReturn(training);
+        assertEquals(training, gymFacade.createTraining("trainee", "trainer", "name", date, 60));
+    }
 
-        Training result = gymFacade.createTraining(1L, 2L, "Morning", type, date, 60);
+    @Test
+    void testGetUnassignedTrainers() {
+        List<Trainer> trainers = List.of(new Trainer());
+        when(trainerService.getUnassignedTrainers("user")).thenReturn(trainers);
+        assertEquals(trainers, gymFacade.getUnassignedTrainers("user"));
+    }
 
-        assertEquals(training, result);
-        verify(trainingService).createTraining(1L, 2L, "Morning", type, date, 60);
+    @Test
+    void testUpdateTraineeTrainersList() {
+        List<Trainer> trainers = List.of(new Trainer());
+        when(traineeService.updateTrainersList("user", List.of("t1"))).thenReturn(trainers);
+        assertEquals(trainers, gymFacade.updateTraineeTrainersList("user", List.of("t1")));
     }
 
     @Test
     void testGetAllTrainers() {
         List<Trainer> trainers = List.of(new Trainer());
-        when(trainerService.getAllTrainers()).thenReturn(trainers);
-
-        List<Trainer> result = gymFacade.getAllTrainers();
-
-        assertEquals(trainers, result);
-        verify(trainerService).getAllTrainers();
+        when(trainerService.findAll()).thenReturn(trainers);
+        assertEquals(trainers, gymFacade.getAllTrainers());
     }
 
     @Test
     void testGetAllTrainees() {
         List<Trainee> trainees = List.of(new Trainee());
-        when(traineeService.getAllTrainees()).thenReturn(trainees);
-
-        List<Trainee> result = gymFacade.getAllTrainees();
-
-        assertEquals(trainees, result);
-        verify(traineeService).getAllTrainees();
+        when(traineeService.findAll()).thenReturn(trainees);
+        assertEquals(trainees, gymFacade.getAllTrainees());
     }
 
     @Test
     void testGetAllTrainings() {
         List<Training> trainings = List.of(new Training());
-        when(trainingService.getAllTrainings()).thenReturn(trainings);
-
-        List<Training> result = gymFacade.getAllTrainings();
-
-        assertEquals(trainings, result);
-        verify(trainingService).getAllTrainings();
+        when(trainingService.findAll()).thenReturn(trainings);
+        assertEquals(trainings, gymFacade.getAllTrainings());
     }
 }

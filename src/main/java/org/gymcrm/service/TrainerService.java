@@ -1,78 +1,122 @@
 package org.gymcrm.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.gymcrm.dao.TraineeDao;
-import org.gymcrm.dao.TrainerDao;
-import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
+import org.gymcrm.model.TrainingType;
+import org.gymcrm.model.User;
+import org.gymcrm.repository.TrainerRepository;
+import org.gymcrm.repository.TrainingTypeRepository;
+import org.gymcrm.repository.UserRepository;
 import org.gymcrm.util.CredentialsGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Stream;
 
 @Slf4j
 @Service
 public class TrainerService {
 
-    private TrainerDao trainerDao;
-    private TraineeDao traineeDao;
-    private CredentialsGenerator credentialsGenerator;
+    private final TrainerRepository trainerRepository;
+    private final UserRepository userRepository;
+    private final CredentialsGenerator credentialsGenerator;
+    private final TrainingTypeRepository trainingTypeRepository;
+    private final ValidationService validationService;
 
     @Autowired
-    public void setTrainerDao(TrainerDao trainerDao) {
-        this.trainerDao = trainerDao;
-    }
-
-    @Autowired
-    public void setTraineeDao(TraineeDao traineeDao) {
-        this.traineeDao = traineeDao;
-    }
-
-    @Autowired
-    public void setCredentialsGenerator(CredentialsGenerator credentialsGenerator) {
+    public TrainerService(TrainerRepository trainerRepository,
+                          UserRepository userRepository,
+                          CredentialsGenerator credentialsGenerator,
+                          TrainingTypeRepository trainingTypeRepository,
+                          ValidationService validationService) {
+        this.trainerRepository = trainerRepository;
+        this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
+        this.trainingTypeRepository = trainingTypeRepository;
+        this.validationService = validationService;
     }
 
+    @Transactional
     public Trainer createTrainer(String firstName, String lastName, String specialization) {
-        Trainer trainer = new Trainer();
-        trainer.setFirstName(firstName);
-        trainer.setLastName(lastName);
-        trainer.setSpecialization(specialization);
-        trainer.setActive(true);
+        validationService.validateName(firstName, "Ім'я тренера");
+        validationService.validateName(lastName, "Прізвище тренера");
 
-        List<String> existingUsernames = Stream.concat(
-                trainerDao.findAll().stream().map(Trainer::getUsername),
-                traineeDao.findAll().stream().map(Trainee::getUsername)
-        ).toList();
-
-        trainer.setUsername(credentialsGenerator.generateUsername(firstName, lastName, existingUsernames));
-        trainer.setPassword(credentialsGenerator.generatePassword());
-
-        trainerDao.save(trainer);
-        log.info("Trainer created: ID [{}], Username [{}], Specialization [{}]",
-                trainer.getId(), trainer.getUsername(), trainer.getSpecialization());
-        return trainer;
-    }
-
-    public Trainer updateTrainer(Trainer trainer) {
-        trainerDao.save(trainer);
-        log.info("Trainer updated: ID [{}], Username [{}]", trainer.getId(), trainer.getUsername());
-        return trainer;
-    }
-
-    public Trainer getTrainer(Long id) {
-        Trainer trainer = trainerDao.findById(id);
-        if (trainer != null) {
-            log.debug("Fetched Trainer with ID: [{}]", id);
-        } else {
-            log.warn("Trainer with ID: [{}] not found", id);
+        if (specialization == null || specialization.trim().isEmpty()) {
+            throw new IllegalArgumentException("Спеціалізація не може бути порожньою.");
         }
-        return trainer;
+
+        List<String> existingUsernames = userRepository.findAll().stream().map(User::getUsername).toList();
+        String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsernames);
+        String password = credentialsGenerator.generatePassword();
+
+        TrainingType type = trainingTypeRepository.findByTrainingTypeNameIgnoreCase(specialization)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown training type: " + specialization));
+
+        Trainer trainer = new Trainer();
+        trainer.setFirstName(firstName.trim());
+        trainer.setLastName(lastName.trim());
+        trainer.setUsername(username);
+        trainer.setPassword(password);
+        trainer.setActive(true);
+        trainer.setSpecialization(type);
+
+        log.info("Creating trainer with username: {}", username);
+        return trainerRepository.save(trainer);
     }
 
-    public List<Trainer> getAllTrainers() {
-        return trainerDao.findAll();
+    @Transactional(readOnly = true)
+    public Trainer getByUsername(String username) {
+        return trainerRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Trainer not found: " + username));
+    }
+
+    @Transactional
+    public void changePassword(String username, String oldPassword, String newPassword) {
+        Trainer trainer = getByUsername(username);
+
+        if (trainer.getPassword().equals(oldPassword)) {
+            trainer.setPassword(newPassword);
+            trainerRepository.save(trainer);
+            log.info("Password changed successfully for trainee: {}", username);
+        } else {
+            log.warn("Password change failed for {}: incorrect old password", username);
+            throw new IllegalArgumentException("Невірний старий пароль");
+        }
+    }
+
+    @Transactional
+    public Trainer updateTrainerSpecialization(String username, String newSpecializationName) {
+        Trainer trainer = getByUsername(username);
+
+        TrainingType type = trainingTypeRepository.findByTrainingTypeNameIgnoreCase(newSpecializationName)
+                .orElseThrow(() -> new IllegalArgumentException("Unknown training type: " + newSpecializationName));
+
+        trainer.setSpecialization(type);
+        log.info("Trainer {} specialization updated to {}", username, newSpecializationName);
+
+        return trainerRepository.save(trainer);
+    }
+
+    @Transactional
+    public void toggleActivation(String username) {
+        Trainer trainer = trainerRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Trainer not found with username: " + username));
+
+        boolean newStatus = !trainer.isActive();
+        trainer.setActive(newStatus);
+
+        log.info("Trainer '{}' activation status toggled to: {}", username, newStatus);
+        trainerRepository.save(trainer);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Trainer> getUnassignedTrainers(String traineeUsername) {
+        return trainerRepository.getUnassignedTrainers(traineeUsername);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Trainer> findAll() {
+        return trainerRepository.findAll();
     }
 }
