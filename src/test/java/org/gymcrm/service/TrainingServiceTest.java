@@ -31,6 +31,8 @@ class TrainingServiceTest {
     private TraineeRepository traineeRepository;
     @Mock
     private TrainerRepository trainerRepository;
+    @Mock
+    private ValidationService validationService;
 
     @InjectMocks
     private TrainingService trainingService;
@@ -56,6 +58,8 @@ class TrainingServiceTest {
         training.setTrainingName("Morning Yoga");
         training.setTrainingDate(new Date());
         training.setTrainingDuration(60);
+
+        lenient().doNothing().when(validationService).validateTraining(anyString(), any(Date.class), any(Number.class));
     }
 
     @Test
@@ -75,6 +79,7 @@ class TrainingServiceTest {
 
     @Test
     void testCreateTraining_InvalidName() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateTraining(eq("Yo"), any(Date.class), any(Number.class));
         assertThrows(IllegalArgumentException.class, () -> 
             trainingService.createTraining("John.Doe", "Jane.Smith", "Yo", new Date(), 60)
         );
@@ -82,6 +87,7 @@ class TrainingServiceTest {
 
     @Test
     void testCreateTraining_InvalidDuration() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateTraining(anyString(), any(Date.class), eq(0));
         assertThrows(IllegalArgumentException.class, () -> 
             trainingService.createTraining("John.Doe", "Jane.Smith", "Morning Yoga", new Date(), 0)
         );

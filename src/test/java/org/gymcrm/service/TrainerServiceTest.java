@@ -2,7 +2,6 @@ package org.gymcrm.service;
 
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.TrainingType;
-import org.gymcrm.model.User;
 import org.gymcrm.repository.TrainerRepository;
 import org.gymcrm.repository.TrainingTypeRepository;
 import org.gymcrm.repository.UserRepository;
@@ -33,6 +32,8 @@ class TrainerServiceTest {
     private CredentialsGenerator credentialsGenerator;
     @Mock
     private TrainingTypeRepository trainingTypeRepository;
+    @Mock
+    private ValidationService validationService;
 
     @InjectMocks
     private TrainerService trainerService;
@@ -52,6 +53,8 @@ class TrainerServiceTest {
         trainer.setPassword("password");
         trainer.setActive(true);
         trainer.setSpecialization(trainingType);
+
+        lenient().doNothing().when(validationService).validateName(anyString(), anyString());
     }
 
     @Test
@@ -76,12 +79,6 @@ class TrainerServiceTest {
         assertThrows(IllegalArgumentException.class, () -> 
             trainerService.createTrainer("Jane", "Smith", "Unknown")
         );
-    }
-
-    @Test
-    void testAuthenticate_Success() {
-        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
-        assertTrue(trainerService.authenticate("Jane.Smith", "password"));
     }
 
     @Test
@@ -116,7 +113,7 @@ class TrainerServiceTest {
     @Test
     void testToggleActivation() {
         when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
-        trainerService.toggleActivation("Jane.Smith", false);
+        trainerService.toggleActivation("Jane.Smith");
         assertFalse(trainer.isActive());
         verify(trainerRepository).save(trainer);
     }

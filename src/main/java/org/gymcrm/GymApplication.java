@@ -86,10 +86,10 @@ public class GymApplication {
         System.out.println("2. Реєстрація: Створити профіль Учня");
         System.out.println("3. Увійти в Кабінет Учня");
         System.out.println("4. Увійти в Кабінет Тренера");
-        System.out.println("5. Адмін: Додати нове Тренування");
-        System.out.println("6. Адмін: Подивитись всіх тренерів");
-        System.out.println("7. Адмін: Подивитись всіх учнів");
-        System.out.println("8. Адмін: Подивитись всі тренування");
+        System.out.println("5. Додати нове Тренування");
+        System.out.println("6. Подивитись всіх тренерів");
+        System.out.println("7. Подивитись всіх учнів");
+        System.out.println("8. Подивитись всі тренування");
         System.out.println("0. Вийти з програми");
         System.out.print("\nОберіть дію: ");
     }
@@ -116,7 +116,7 @@ public class GymApplication {
         System.out.print("Введіть Username: "); String user = scanner.nextLine();
         System.out.print("Введіть Password: "); String pass = scanner.nextLine();
 
-        if (!facade.authenticateTrainee(user, pass)) {
+        if (!facade.authenticate(user, pass)) {
             System.out.println("-> Відмовлено в доступі: невірні дані.");
             return;
         }
@@ -159,9 +159,10 @@ public class GymApplication {
                         inCabinet = false;
                         break;
                     case "4":
-                        System.out.print("Активувати профіль? (true/false): ");
-                        facade.toggleTraineeActivation(user, Boolean.parseBoolean(scanner.nextLine()));
-                        System.out.println("-> Статус оновлено!");
+                        facade.toggleTraineeActivation(user);
+                        boolean currentStatus = facade.getTrainee(user).isActive();
+                        String statusText = currentStatus ? "АКТИВНИЙ" : "ДЕАКТИВОВАНИЙ";
+                        System.out.println("-> Статус профілю успішно змінено на: " + statusText);
                         break;
                     case "5":
                         facade.deleteTrainee(user);
@@ -242,7 +243,7 @@ public class GymApplication {
         System.out.print("Введіть Username: "); String user = scanner.nextLine();
         System.out.print("Введіть Password: "); String pass = scanner.nextLine();
 
-        if (!facade.authenticateTrainer(user, pass)) {
+        if (!facade.authenticate(user, pass)) {
             System.out.println("-> Відмовлено в доступі.");
             return;
         }
@@ -281,9 +282,10 @@ public class GymApplication {
                         inCabinet = false;
                         break;
                     case "4":
-                        System.out.print("Активувати профіль? (true/false): ");
-                        facade.toggleTrainerActivation(user, Boolean.parseBoolean(scanner.nextLine()));
-                        System.out.println("-> Статус оновлено!");
+                        facade.toggleTrainerActivation(user);
+                        boolean currentStatus = facade.getTrainer(user).isActive();
+                        String statusText = currentStatus ? "АКТИВНИЙ" : "ДЕАКТИВОВАНИЙ";
+                        System.out.println("-> Статус профілю успішно змінено на: " + statusText);
                         break;
                     case "5":
                         System.out.println("--- ФІЛЬТР ТРЕНУВАНЬ ---");

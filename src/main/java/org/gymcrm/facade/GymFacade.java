@@ -3,6 +3,7 @@ package org.gymcrm.facade;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
+import org.gymcrm.service.AuthService;
 import org.gymcrm.service.TraineeService;
 import org.gymcrm.service.TrainerService;
 import org.gymcrm.service.TrainingService;
@@ -17,12 +18,17 @@ public class GymFacade {
     private final TrainerService trainerService;
     private final TraineeService traineeService;
     private final TrainingService trainingService;
+    private final AuthService authService;
 
     @Autowired
-    public GymFacade(TrainerService trainerService, TraineeService traineeService, TrainingService trainingService) {
+    public GymFacade(TrainerService trainerService,
+                     TraineeService traineeService,
+                     TrainingService trainingService,
+                     AuthService authService) {
         this.trainerService = trainerService;
         this.traineeService = traineeService;
         this.trainingService = trainingService;
+        this.authService = authService;
     }
 
     public Trainer createTrainer(String firstName, String lastName, String specialization) {
@@ -33,12 +39,8 @@ public class GymFacade {
         return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
-    public boolean authenticateTrainee(String username, String password) {
-        return traineeService.authenticate(username, password);
-    }
-
-    public boolean authenticateTrainer(String username, String password) {
-        return trainerService.authenticate(username, password);
+    public boolean authenticate(String username, String password) {
+        return authService.authenticate(username, password);
     }
 
     public Trainee getTrainee(String username) {
@@ -65,12 +67,12 @@ public class GymFacade {
         return trainerService.updateTrainerSpecialization(username, specializationName);
     }
 
-    public void toggleTraineeActivation(String username, boolean isActive) {
-        traineeService.toggleActivation(username, isActive);
+    public void toggleTraineeActivation(String username) {
+        traineeService.toggleActivation(username);
     }
 
-    public void toggleTrainerActivation(String username, boolean isActive) {
-        trainerService.toggleActivation(username, isActive);
+    public void toggleTrainerActivation(String username) {
+        trainerService.toggleActivation(username);
     }
 
     public void deleteTrainee(String username) {

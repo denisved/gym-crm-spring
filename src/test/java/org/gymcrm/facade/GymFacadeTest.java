@@ -3,6 +3,7 @@ package org.gymcrm.facade;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
 import org.gymcrm.model.Training;
+import org.gymcrm.service.AuthService;
 import org.gymcrm.service.TraineeService;
 import org.gymcrm.service.TrainerService;
 import org.gymcrm.service.TrainingService;
@@ -27,6 +28,8 @@ class GymFacadeTest {
     private TrainerService trainerService;
     @Mock
     private TrainingService trainingService;
+    @Mock
+    private AuthService authService;
 
     @InjectMocks
     private GymFacade gymFacade;
@@ -51,15 +54,10 @@ class GymFacadeTest {
     }
 
     @Test
-    void testAuthenticateTrainee() {
-        when(traineeService.authenticate("user", "pass")).thenReturn(true);
-        assertTrue(gymFacade.authenticateTrainee("user", "pass"));
-    }
-
-    @Test
-    void testAuthenticateTrainer() {
-        when(trainerService.authenticate("user", "pass")).thenReturn(true);
-        assertTrue(gymFacade.authenticateTrainer("user", "pass"));
+    void testAuthenticate() {
+        when(authService.authenticate("user", "pass")).thenReturn(true);
+        assertTrue(gymFacade.authenticate("user", "pass"));
+        verify(authService).authenticate("user", "pass");
     }
 
     @Test
@@ -104,14 +102,14 @@ class GymFacadeTest {
 
     @Test
     void testToggleTraineeActivation() {
-        gymFacade.toggleTraineeActivation("user", true);
-        verify(traineeService).toggleActivation("user", true);
+        gymFacade.toggleTraineeActivation("user");
+        verify(traineeService).toggleActivation("user");
     }
 
     @Test
     void testToggleTrainerActivation() {
-        gymFacade.toggleTrainerActivation("user", true);
-        verify(trainerService).toggleActivation("user", true);
+        gymFacade.toggleTrainerActivation("user");
+        verify(trainerService).toggleActivation("user");
     }
 
     @Test

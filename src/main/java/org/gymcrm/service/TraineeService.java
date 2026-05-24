@@ -23,30 +23,24 @@ public class TraineeService {
     private final TrainerRepository trainerRepository;
     private final UserRepository userRepository;
     private final CredentialsGenerator credentialsGenerator;
+    private final ValidationService validationService;
 
     @Autowired
     public TraineeService(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
-                          UserRepository userRepository, CredentialsGenerator credentialsGenerator) {
+                          UserRepository userRepository, CredentialsGenerator credentialsGenerator,
+                          ValidationService validationService) {
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
         this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
-    }
-
-    private void validateName(String name, String fieldName) {
-        if (name == null || name.trim().length() < 3) {
-            throw new IllegalArgumentException(fieldName + " має містити мінімум 3 символи.");
-        }
+        this.validationService = validationService;
     }
 
     @Transactional
     public Trainee createTrainee(String firstName, String lastName, Date dateOfBirth, String address) {
-        validateName(firstName, "Ім'я учня");
-        validateName(lastName, "Прізвище учня");
-
-        if (dateOfBirth != null && dateOfBirth.after(new Date())) {
-            throw new IllegalArgumentException("Помилка: Дата народження не може бути в майбутньому часі.");
-        }
+        validationService.validateName(firstName, "Ім'я учня");
+        validationService.validateName(lastName, "Прізвище учня");
+        validationService.validateDateOfBirth(dateOfBirth);
 
         List<String> existingUsernames = userRepository.findAll().stream().map(User::getUsername).toList();
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsernames);
@@ -66,13 +60,6 @@ public class TraineeService {
     }
 
     @Transactional(readOnly = true)
-    public boolean authenticate(String username, String password) {
-        return traineeRepository.findByUsername(username)
-                .map(trainee -> trainee.getPassword().equals(password))
-                .orElse(false);
-    }
-
-    @Transactional(readOnly = true)
     public Trainee getByUsername(String username) {
         return traineeRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Trainee not found: " + username));
@@ -80,14 +67,15 @@ public class TraineeService {
 
     @Transactional
     public void changePassword(String username, String oldPassword, String newPassword) {
-        if (authenticate(username, oldPassword)) {
-            Trainee trainee = getByUsername(username);
+        Trainee trainee = getByUsername(username);
+
+        if (trainee.getPassword().equals(oldPassword)) {
             trainee.setPassword(newPassword);
             traineeRepository.save(trainee);
             log.info("Password changed successfully for trainee: {}", username);
         } else {
             log.warn("Password change failed for {}: incorrect old password", username);
-            throw new IllegalArgumentException("Authentication failed");
+            throw new IllegalArgumentException("Невірний старий пароль");
         }
     }
 
@@ -98,11 +86,15 @@ public class TraineeService {
     }
 
     @Transactional
-    public void toggleActivation(String username, boolean isActive) {
-        Trainee trainee = getByUsername(username);
-        trainee.setActive(isActive);
+    public void toggleActivation(String username) {
+        Trainee trainee = traineeRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Trainee not found with username: " + username));
+
+        boolean newStatus = !trainee.isActive();
+        trainee.setActive(newStatus);
+
+        log.info("Trainee '{}' activation status toggled to: {}", username, newStatus);
         traineeRepository.save(trainee);
-        log.info("Trainee {} activation status changed to: {}", username, isActive);
     }
 
     @Transactional
@@ -129,7 +121,6 @@ public class TraineeService {
         log.info("Trainers list updated for trainee: {}", traineeUsername);
         return trainee.getTrainers();
     }
-
 
     @Transactional(readOnly = true)
     public List<Trainee> findAll() {

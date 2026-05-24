@@ -21,25 +21,22 @@ public class TrainingService {
     private final TrainingRepository trainingRepository;
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
+    private final ValidationService validationService; // Додаємо залежність
 
     @Autowired
-    public TrainingService(TrainingRepository trainingRepository, TraineeRepository traineeRepository, TrainerRepository trainerRepository) {
+    public TrainingService(TrainingRepository trainingRepository,
+                           TraineeRepository traineeRepository,
+                           TrainerRepository trainerRepository,
+                           ValidationService validationService) { // Інжектимо в конструктор
         this.trainingRepository = trainingRepository;
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
+        this.validationService = validationService;
     }
 
     @Transactional
     public Training createTraining(String traineeUsername, String trainerUsername, String trainingName, Date trainingDate, Number trainingDuration) {
-        if (trainingName == null || trainingName.trim().length() < 3) {
-            throw new IllegalArgumentException("Назва тренування має містити мінімум 3 символи.");
-        }
-        if (trainingDate == null) {
-            throw new IllegalArgumentException("Дата тренування є обов'язковою.");
-        }
-        if (trainingDuration == null || trainingDuration.intValue() <= 0) {
-            throw new IllegalArgumentException("Тривалість тренування має бути більшою за 0 хвилин.");
-        }
+        validationService.validateTraining(trainingName, trainingDate, trainingDuration);
 
         log.info("Creating training: {} for Trainee: {} and Trainer: {}", trainingName, traineeUsername, trainerUsername);
 

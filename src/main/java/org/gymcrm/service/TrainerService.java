@@ -22,28 +22,25 @@ public class TrainerService {
     private final UserRepository userRepository;
     private final CredentialsGenerator credentialsGenerator;
     private final TrainingTypeRepository trainingTypeRepository;
+    private final ValidationService validationService;
 
     @Autowired
     public TrainerService(TrainerRepository trainerRepository,
                           UserRepository userRepository,
                           CredentialsGenerator credentialsGenerator,
-                          TrainingTypeRepository trainingTypeRepository) {
+                          TrainingTypeRepository trainingTypeRepository,
+                          ValidationService validationService) {
         this.trainerRepository = trainerRepository;
         this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
         this.trainingTypeRepository = trainingTypeRepository;
-    }
-
-    private void validateName(String name, String fieldName) {
-        if (name == null || name.trim().length() < 3) {
-            throw new IllegalArgumentException(fieldName + " має містити мінімум 3 символи і не складатися лише з пробілів.");
-        }
+        this.validationService = validationService;
     }
 
     @Transactional
     public Trainer createTrainer(String firstName, String lastName, String specialization) {
-        validateName(firstName, "Ім'я тренера");
-        validateName(lastName, "Прізвище тренера");
+        validationService.validateName(firstName, "Ім'я тренера");
+        validationService.validateName(lastName, "Прізвище тренера");
 
         if (specialization == null || specialization.trim().isEmpty()) {
             throw new IllegalArgumentException("Спеціалізація не може бути порожньою.");
@@ -69,13 +66,6 @@ public class TrainerService {
     }
 
     @Transactional(readOnly = true)
-    public boolean authenticate(String username, String password) {
-        return trainerRepository.findByUsername(username)
-                .map(trainer -> trainer.getPassword().equals(password))
-                .orElse(false);
-    }
-
-    @Transactional(readOnly = true)
     public Trainer getByUsername(String username) {
         return trainerRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Trainer not found: " + username));
@@ -83,14 +73,15 @@ public class TrainerService {
 
     @Transactional
     public void changePassword(String username, String oldPassword, String newPassword) {
-        if (authenticate(username, oldPassword)) {
-            Trainer trainer = getByUsername(username);
+        Trainer trainer = getByUsername(username);
+
+        if (trainer.getPassword().equals(oldPassword)) {
             trainer.setPassword(newPassword);
             trainerRepository.save(trainer);
-            log.info("Password changed successfully for trainer: {}", username);
+            log.info("Password changed successfully for trainee: {}", username);
         } else {
             log.warn("Password change failed for {}: incorrect old password", username);
-            throw new IllegalArgumentException("Authentication failed");
+            throw new IllegalArgumentException("Невірний старий пароль");
         }
     }
 
@@ -108,11 +99,15 @@ public class TrainerService {
     }
 
     @Transactional
-    public void toggleActivation(String username, boolean isActive) {
-        Trainer trainer = getByUsername(username);
-        trainer.setActive(isActive);
+    public void toggleActivation(String username) {
+        Trainer trainer = trainerRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Trainer not found with username: " + username));
+
+        boolean newStatus = !trainer.isActive();
+        trainer.setActive(newStatus);
+
+        log.info("Trainer '{}' activation status toggled to: {}", username, newStatus);
         trainerRepository.save(trainer);
-        log.info("Trainer {} activation status changed to: {}", username, isActive);
     }
 
     @Transactional(readOnly = true)

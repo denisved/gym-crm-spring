@@ -2,7 +2,6 @@ package org.gymcrm.service;
 
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
-import org.gymcrm.model.User;
 import org.gymcrm.repository.TraineeRepository;
 import org.gymcrm.repository.TrainerRepository;
 import org.gymcrm.repository.UserRepository;
@@ -34,6 +33,8 @@ class TraineeServiceTest {
     private UserRepository userRepository;
     @Mock
     private CredentialsGenerator credentialsGenerator;
+    @Mock
+    private ValidationService validationService;
 
     @InjectMocks
     private TraineeService traineeService;
@@ -48,6 +49,9 @@ class TraineeServiceTest {
         trainee.setUsername("John.Doe");
         trainee.setPassword("password");
         trainee.setActive(true);
+
+        lenient().doNothing().when(validationService).validateName(anyString(), anyString());
+        lenient().doNothing().when(validationService).validateDateOfBirth(any(Date.class));
     }
 
     @Test
@@ -69,6 +73,7 @@ class TraineeServiceTest {
 
     @Test
     void testCreateTrainee_InvalidFirstName() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateName(eq("Jo"), anyString());
         assertThrows(IllegalArgumentException.class, () -> 
             traineeService.createTrainee("Jo", "Doe", new Date(), "Address")
         );
@@ -76,6 +81,7 @@ class TraineeServiceTest {
 
     @Test
     void testCreateTrainee_InvalidLastName() {
+        doThrow(new IllegalArgumentException()).when(validationService).validateName(eq("Do"), anyString());
         assertThrows(IllegalArgumentException.class, () -> 
             traineeService.createTrainee("John", "Do", new Date(), "Address")
         );
@@ -84,6 +90,7 @@ class TraineeServiceTest {
     @Test
     void testCreateTrainee_FutureBirthDate() {
         Date futureDate = new Date(System.currentTimeMillis() + 1000000);
+        doThrow(new IllegalArgumentException()).when(validationService).validateDateOfBirth(futureDate);
         assertThrows(IllegalArgumentException.class, () -> 
             traineeService.createTrainee("John", "Doe", futureDate, "Address")
         );
@@ -100,24 +107,6 @@ class TraineeServiceTest {
 
         assertNull(created.getAddress());
         verify(traineeRepository).save(any(Trainee.class));
-    }
-
-    @Test
-    void testAuthenticate_Success() {
-        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
-        assertTrue(traineeService.authenticate("John.Doe", "password"));
-    }
-
-    @Test
-    void testAuthenticate_Failure() {
-        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
-        assertFalse(traineeService.authenticate("John.Doe", "wrongPassword"));
-    }
-
-    @Test
-    void testAuthenticate_UserNotFound() {
-        when(traineeRepository.findByUsername("Unknown")).thenReturn(Optional.empty());
-        assertFalse(traineeService.authenticate("Unknown", "password"));
     }
 
     @Test
@@ -160,7 +149,7 @@ class TraineeServiceTest {
     @Test
     void testToggleActivation() {
         when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.of(trainee));
-        traineeService.toggleActivation("John.Doe", false);
+        traineeService.toggleActivation("John.Doe");
         assertFalse(trainee.isActive());
         verify(traineeRepository).save(trainee);
     }
