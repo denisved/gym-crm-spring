@@ -21,13 +21,13 @@ public class TrainingService {
     private final TrainingRepository trainingRepository;
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
-    private final ValidationService validationService; // Додаємо залежність
+    private final ValidationService validationService;
 
     @Autowired
     public TrainingService(TrainingRepository trainingRepository,
                            TraineeRepository traineeRepository,
                            TrainerRepository trainerRepository,
-                           ValidationService validationService) { // Інжектимо в конструктор
+                           ValidationService validationService) {
         this.trainingRepository = trainingRepository;
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
