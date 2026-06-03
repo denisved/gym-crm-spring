@@ -1,9 +1,6 @@
 package org.gymcrm.config;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.*;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -15,6 +12,7 @@ import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import javax.sql.DataSource;
 import java.util.Properties;
@@ -24,6 +22,7 @@ import java.util.Properties;
 @PropertySource("classpath:application.properties")
 @EnableJpaRepositories(basePackages = "org.gymcrm.repository")
 @EnableTransactionManagement
+@EnableAspectJAutoProxy
 public class AppConfig {
 
     private final Environment env;
@@ -72,6 +71,11 @@ public class AppConfig {
         initializer.setDataSource(dataSource);
         initializer.setDatabasePopulator(populator);
         return initializer;
+    }
+
+    @Bean
+    public LocalValidatorFactoryBean validator() {
+        return new LocalValidatorFactoryBean();
     }
 
     private Properties hibernateProperties() {

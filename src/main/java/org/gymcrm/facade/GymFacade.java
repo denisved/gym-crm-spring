@@ -51,12 +51,8 @@ public class GymFacade {
         return trainerService.getByUsername(username);
     }
 
-    public void changeTraineePassword(String username, String oldPassword, String newPassword) {
-        traineeService.changePassword(username, oldPassword, newPassword);
-    }
-
-    public void changeTrainerPassword(String username, String oldPassword, String newPassword) {
-        trainerService.changePassword(username, oldPassword, newPassword);
+    public void changeUserPassword(String username, String newPassword) {
+        authService.changePassword(username, newPassword);
     }
 
     public Trainee updateTrainee(Trainee trainee) {

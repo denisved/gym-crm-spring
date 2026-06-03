@@ -75,15 +75,9 @@ class GymFacadeTest {
     }
 
     @Test
-    void testChangeTraineePassword() {
-        gymFacade.changeTraineePassword("user", "old", "new");
-        verify(traineeService).changePassword("user", "old", "new");
-    }
-
-    @Test
-    void testChangeTrainerPassword() {
-        gymFacade.changeTrainerPassword("user", "old", "new");
-        verify(trainerService).changePassword("user", "old", "new");
+    void testChangeUserPassword() {
+        gymFacade.changeUserPassword("user", "new");
+        verify(authService).changePassword("user", "new");
     }
 
     @Test
