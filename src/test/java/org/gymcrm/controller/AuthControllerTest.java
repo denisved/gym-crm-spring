@@ -115,24 +115,7 @@ class AuthControllerTest {
         request.setNewPassword("new");
 
         when(gymFacade.authenticate("user", "old")).thenReturn(true);
-        doNothing().when(gymFacade).changeTraineePassword("user", "old", "new");
-
-        mockMvc.perform(put("/api/v1/auth/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk());
-    }
-
-    @Test
-    void changePassword_Trainer_Success() throws Exception {
-        PasswordChangeRequest request = new PasswordChangeRequest();
-        request.setUsername("user");
-        request.setOldPassword("old");
-        request.setNewPassword("new");
-
-        when(gymFacade.authenticate("user", "old")).thenReturn(true);
-        doThrow(new IllegalArgumentException()).when(gymFacade).changeTraineePassword("user", "old", "new");
-        doNothing().when(gymFacade).changeTrainerPassword("user", "old", "new");
+        doNothing().when(gymFacade).changeUserPassword("user", "new");
 
         mockMvc.perform(put("/api/v1/auth/password")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -153,22 +136,5 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void changePassword_NotFound() throws Exception {
-        PasswordChangeRequest request = new PasswordChangeRequest();
-        request.setUsername("user");
-        request.setOldPassword("old");
-        request.setNewPassword("new");
-
-        when(gymFacade.authenticate("user", "old")).thenReturn(true);
-        doThrow(new IllegalArgumentException()).when(gymFacade).changeTraineePassword("user", "old", "new");
-        doThrow(new IllegalArgumentException()).when(gymFacade).changeTrainerPassword("user", "old", "new");
-
-        mockMvc.perform(put("/api/v1/auth/password")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isNotFound());
     }
 }
