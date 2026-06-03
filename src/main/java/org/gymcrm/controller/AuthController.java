@@ -64,16 +64,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        try {
-            gymFacade.changeTraineePassword(request.getUsername(), request.getOldPassword(), request.getNewPassword());
-        } catch (IllegalArgumentException e) {
-            try {
-                gymFacade.changeTrainerPassword(request.getUsername(), request.getOldPassword(), request.getNewPassword());
-            } catch (IllegalArgumentException ex) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-            }
-        }
-
+        gymFacade.changeUserPassword(request.getUsername(), request.getNewPassword());
         return ResponseEntity.ok().build();
     }
 }

@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static org.hibernate.internal.util.StringHelper.isBlank;
+
 @Slf4j
 @Service
 public class TrainerService {
@@ -42,7 +44,7 @@ public class TrainerService {
         validationService.validateName(firstName, "Ім'я тренера");
         validationService.validateName(lastName, "Прізвище тренера");
 
-        if (specialization == null || specialization.trim().isEmpty()) {
+        if (isBlank(specialization)) {
             throw new IllegalArgumentException("Спеціалізація не може бути порожньою.");
         }
 
