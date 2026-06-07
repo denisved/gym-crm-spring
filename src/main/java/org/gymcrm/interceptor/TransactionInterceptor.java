@@ -8,7 +8,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.util.UUID;
 
-@Component
+@Component("loggingTransactionInterceptor")
 public class TransactionInterceptor implements HandlerInterceptor {
 
     public static final String TRANSACTION_ID = "transactionId";

@@ -22,11 +22,6 @@ class WebConfigTest {
     private WebConfig webConfig;
 
     @Test
-    void openEntityManagerInViewInterceptor_ReturnsInterceptor() {
-        assertNotNull(webConfig.openEntityManagerInViewInterceptor());
-    }
-
-    @Test
     void addInterceptors_AddsInterceptors() {
         InterceptorRegistry registry = mock(InterceptorRegistry.class);
         org.springframework.web.servlet.config.annotation.InterceptorRegistration registration = mock(org.springframework.web.servlet.config.annotation.InterceptorRegistration.class, RETURNS_DEEP_STUBS);
@@ -36,6 +31,6 @@ class WebConfigTest {
 
         webConfig.addInterceptors(registry);
 
-        verify(registry, atLeastOnce()).addInterceptor(any());
+        verify(registry, times(2)).addInterceptor(any());
     }
 }
