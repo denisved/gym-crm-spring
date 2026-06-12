@@ -9,6 +9,7 @@ import org.gymcrm.repository.TrainingTypeRepository;
 import org.gymcrm.repository.UserRepository;
 import org.gymcrm.util.CredentialsGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,18 +26,21 @@ public class TrainerService {
     private final CredentialsGenerator credentialsGenerator;
     private final TrainingTypeRepository trainingTypeRepository;
     private final ValidationService validationService;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public TrainerService(TrainerRepository trainerRepository,
                           UserRepository userRepository,
                           CredentialsGenerator credentialsGenerator,
                           TrainingTypeRepository trainingTypeRepository,
-                          ValidationService validationService) {
+                          ValidationService validationService,
+                          PasswordEncoder passwordEncoder) {
         this.trainerRepository = trainerRepository;
         this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
         this.trainingTypeRepository = trainingTypeRepository;
         this.validationService = validationService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -50,7 +54,8 @@ public class TrainerService {
 
         List<String> existingUsernames = userRepository.findAll().stream().map(User::getUsername).toList();
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsernames);
-        String password = credentialsGenerator.generatePassword();
+
+        String rawPassword = credentialsGenerator.generatePassword();
 
         TrainingType type = trainingTypeRepository.findByTrainingTypeNameIgnoreCase(specialization)
                 .orElseThrow(() -> new IllegalArgumentException("Unknown training type: " + specialization));
@@ -59,12 +64,15 @@ public class TrainerService {
         trainer.setFirstName(firstName.trim());
         trainer.setLastName(lastName.trim());
         trainer.setUsername(username);
-        trainer.setPassword(password);
+        trainer.setPassword(passwordEncoder.encode(rawPassword));
+        trainer.setPlainPassword(rawPassword);
         trainer.setActive(true);
         trainer.setSpecialization(type);
 
         log.info("Creating trainer with username: {}", username);
-        return trainerRepository.save(trainer);
+        trainer = trainerRepository.save(trainer);
+
+        return trainer;
     }
 
     @Transactional(readOnly = true)
@@ -77,10 +85,10 @@ public class TrainerService {
     public void changePassword(String username, String oldPassword, String newPassword) {
         Trainer trainer = getByUsername(username);
 
-        if (trainer.getPassword().equals(oldPassword)) {
-            trainer.setPassword(newPassword);
+        if (passwordEncoder.matches(oldPassword, trainer.getPassword())) {
+            trainer.setPassword(passwordEncoder.encode(newPassword));
             trainerRepository.save(trainer);
-            log.info("Password changed successfully for trainee: {}", username);
+            log.info("Password changed successfully for trainer: {}", username);
         } else {
             log.warn("Password change failed for {}: incorrect old password", username);
             throw new IllegalArgumentException("Невірний старий пароль");

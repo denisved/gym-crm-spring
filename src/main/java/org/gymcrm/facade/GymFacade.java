@@ -39,10 +39,6 @@ public class GymFacade {
         return traineeService.createTrainee(firstName, lastName, dateOfBirth, address);
     }
 
-    public boolean authenticate(String username, String password) {
-        return authService.authenticate(username, password);
-    }
-
     public Trainee getTrainee(String username) {
         return traineeService.getByUsername(username);
     }

@@ -10,6 +10,7 @@ import org.gymcrm.facade.GymFacade;
 import org.gymcrm.model.Training;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
@@ -38,6 +39,7 @@ public class TrainingController {
     }
 
     @GetMapping("/trainee/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Get Trainee Trainings List")
     public ResponseEntity<List<TrainingResponse>> getTraineeTrainings(
             @PathVariable String username,
@@ -62,6 +64,7 @@ public class TrainingController {
     }
 
     @GetMapping("/trainer/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Get Trainer Trainings List")
     public ResponseEntity<List<TrainingResponse>> getTrainerTrainings(
             @PathVariable String username,

@@ -54,13 +54,6 @@ class GymFacadeTest {
     }
 
     @Test
-    void testAuthenticate() {
-        when(authService.authenticate("user", "pass")).thenReturn(true);
-        assertTrue(gymFacade.authenticate("user", "pass"));
-        verify(authService).authenticate("user", "pass");
-    }
-
-    @Test
     void testGetTrainee() {
         Trainee trainee = new Trainee();
         when(traineeService.getByUsername("user")).thenReturn(trainee);

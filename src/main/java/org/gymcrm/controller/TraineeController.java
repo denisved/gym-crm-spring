@@ -11,6 +11,7 @@ import org.gymcrm.dto.UpdateTraineeRequest;
 import org.gymcrm.facade.GymFacade;
 import org.gymcrm.model.Trainee;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class TraineeController {
     private final GymFacade gymFacade;
 
     @GetMapping("/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Get Trainee Profile")
     public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@PathVariable("username") String username) {
         Trainee trainee = gymFacade.getTrainee(username);
@@ -32,6 +34,7 @@ public class TraineeController {
     }
 
     @PutMapping("/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Update Trainee Profile")
     public ResponseEntity<TraineeProfileResponse> updateTraineeProfile(
             @PathVariable("username") String username,
@@ -52,6 +55,7 @@ public class TraineeController {
     }
 
     @PatchMapping("/{username}/status")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Activate/De-Activate Trainee")
     public ResponseEntity<Void> toggleTraineeStatus(
             @PathVariable("username") String username,
@@ -65,6 +69,7 @@ public class TraineeController {
     }
 
     @DeleteMapping("/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Delete Trainee Profile")
     public ResponseEntity<Void> deleteTraineeProfile(@PathVariable("username") String username) {
         gymFacade.deleteTrainee(username);
@@ -72,6 +77,7 @@ public class TraineeController {
     }
 
     @GetMapping("/{username}/trainers/unassigned")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Get not assigned on trainee active trainers")
     public ResponseEntity<List<TrainerInfoDto>> getUnassignedTrainers(@PathVariable("username") String username) {
         List<TrainerInfoDto> unassignedTrainers = gymFacade.getUnassignedTrainers(username).stream()
@@ -82,6 +88,7 @@ public class TraineeController {
     }
 
     @PutMapping("/{username}/trainers")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Update Trainee's Trainer List")
     public ResponseEntity<List<TrainerInfoDto>> updateTraineeTrainers(
             @PathVariable("username") String username,
