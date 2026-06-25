@@ -8,10 +8,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -20,33 +21,29 @@ class AuthServiceTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private AuthService authService;
 
     @Test
-    void testAuthenticate_Success() {
+    void testChangePassword_Success() {
         User user = new Trainee();
         user.setUsername("user");
-        user.setPassword("pass");
         when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode("newPass")).thenReturn("hashedNewPass");
 
-        assertTrue(authService.authenticate("user", "pass"));
+        authService.changePassword("user", "newPass");
+
+        verify(userRepository).save(user);
+        verify(passwordEncoder).encode("newPass");
     }
 
     @Test
-    void testAuthenticate_Failure() {
-        User user = new Trainee();
-        user.setUsername("user");
-        user.setPassword("pass");
-        when(userRepository.findByUsername("user")).thenReturn(Optional.of(user));
-
-        assertFalse(authService.authenticate("user", "wrong"));
-    }
-
-    @Test
-    void testAuthenticate_UserNotFound() {
+    void testChangePassword_UserNotFound() {
         when(userRepository.findByUsername("unknown")).thenReturn(Optional.empty());
 
-        assertFalse(authService.authenticate("unknown", "pass"));
+        assertThrows(IllegalArgumentException.class, () -> authService.changePassword("unknown", "newPass"));
     }
 }

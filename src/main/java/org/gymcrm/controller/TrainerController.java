@@ -11,6 +11,7 @@ import org.gymcrm.dto.UpdateTrainerRequest;
 import org.gymcrm.facade.GymFacade;
 import org.gymcrm.model.Trainer;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class TrainerController {
     private final GymFacade gymFacade;
 
     @GetMapping("/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Get Trainer Profile")
     public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable("username") String username) {
         Trainer trainer = gymFacade.getTrainer(username);
@@ -32,6 +34,7 @@ public class TrainerController {
     }
 
     @PutMapping("/{username}")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Update Trainer Profile")
     public ResponseEntity<TrainerProfileResponse> updateTrainerProfile(
             @PathVariable("username") String username,
@@ -52,6 +55,7 @@ public class TrainerController {
     }
 
     @PatchMapping("/{username}/status")
+    @PreAuthorize("#username == authentication.name")
     @Operation(summary = "Activate/De-Activate Trainer")
     public ResponseEntity<Void> toggleTrainerStatus(
             @PathVariable("username") String username,

@@ -9,6 +9,7 @@ import org.gymcrm.repository.TrainerRepository;
 import org.gymcrm.repository.UserRepository;
 import org.gymcrm.util.CredentialsGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,16 +25,18 @@ public class TraineeService {
     private final UserRepository userRepository;
     private final CredentialsGenerator credentialsGenerator;
     private final ValidationService validationService;
+    private final PasswordEncoder passwordEncoder;
 
     @Autowired
     public TraineeService(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
                           UserRepository userRepository, CredentialsGenerator credentialsGenerator,
-                          ValidationService validationService) {
+                          ValidationService validationService, PasswordEncoder passwordEncoder) {
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
         this.userRepository = userRepository;
         this.credentialsGenerator = credentialsGenerator;
         this.validationService = validationService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -44,19 +47,23 @@ public class TraineeService {
 
         List<String> existingUsernames = userRepository.findAll().stream().map(User::getUsername).toList();
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsernames);
-        String password = credentialsGenerator.generatePassword();
+
+        String rawPassword = credentialsGenerator.generatePassword();
 
         Trainee trainee = new Trainee();
         trainee.setFirstName(firstName.trim());
         trainee.setLastName(lastName.trim());
         trainee.setUsername(username);
-        trainee.setPassword(password);
+        trainee.setPassword(passwordEncoder.encode(rawPassword));
+        trainee.setPlainPassword(rawPassword);
         trainee.setActive(true);
         trainee.setDateOfBirth(dateOfBirth);
         trainee.setAddress(address != null ? address.trim() : null);
 
         log.info("Creating trainee with username: {}", username);
-        return traineeRepository.save(trainee);
+        trainee = traineeRepository.save(trainee);
+
+        return trainee;
     }
 
     @Transactional(readOnly = true)
@@ -69,8 +76,8 @@ public class TraineeService {
     public void changePassword(String username, String oldPassword, String newPassword) {
         Trainee trainee = getByUsername(username);
 
-        if (trainee.getPassword().equals(oldPassword)) {
-            trainee.setPassword(newPassword);
+        if (passwordEncoder.matches(oldPassword, trainee.getPassword())) {
+            trainee.setPassword(passwordEncoder.encode(newPassword));
             traineeRepository.save(trainee);
             log.info("Password changed successfully for trainee: {}", username);
         } else {

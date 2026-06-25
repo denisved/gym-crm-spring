@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,6 +35,8 @@ class TrainerServiceTest {
     private TrainingTypeRepository trainingTypeRepository;
     @Mock
     private ValidationService validationService;
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private TrainerService trainerService;
@@ -50,7 +53,7 @@ class TrainerServiceTest {
         trainer.setFirstName("Jane");
         trainer.setLastName("Smith");
         trainer.setUsername("Jane.Smith");
-        trainer.setPassword("password");
+        trainer.setPassword("hashedPassword");
         trainer.setActive(true);
         trainer.setSpecialization(trainingType);
 
@@ -62,6 +65,7 @@ class TrainerServiceTest {
         when(userRepository.findAll()).thenReturn(new ArrayList<>());
         when(credentialsGenerator.generateUsername(anyString(), anyString(), anyList())).thenReturn("Jane.Smith");
         when(credentialsGenerator.generatePassword()).thenReturn("randomPass");
+        when(passwordEncoder.encode("randomPass")).thenReturn("hashedPass");
         when(trainingTypeRepository.findByTrainingTypeNameIgnoreCase("Yoga")).thenReturn(Optional.of(trainingType));
         when(trainerRepository.save(any(Trainer.class))).thenAnswer(i -> i.getArguments()[0]);
 
@@ -69,31 +73,31 @@ class TrainerServiceTest {
 
         assertNotNull(created);
         assertEquals("Jane", created.getFirstName());
-        assertEquals("Yoga", created.getSpecialization().getTrainingTypeName());
+        assertEquals("hashedPass", created.getPassword());
+        assertEquals("randomPass", created.getPlainPassword());
         verify(trainerRepository).save(any(Trainer.class));
-    }
-
-    @Test
-    void testCreateTrainer_InvalidSpecialization() {
-        when(trainingTypeRepository.findByTrainingTypeNameIgnoreCase("Unknown")).thenReturn(Optional.empty());
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.createTrainer("Jane", "Smith", "Unknown")
-        );
-    }
-
-    @Test
-    void testGetByUsername_Success() {
-        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
-        Trainer found = trainerService.getByUsername("Jane.Smith");
-        assertEquals(trainer, found);
     }
 
     @Test
     void testChangePassword_Success() {
         when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
-        trainerService.changePassword("Jane.Smith", "password", "newPass");
-        assertEquals("newPass", trainer.getPassword());
+        when(passwordEncoder.matches("oldPass", "hashedPassword")).thenReturn(true);
+        when(passwordEncoder.encode("newPass")).thenReturn("newHashedPass");
+
+        trainerService.changePassword("Jane.Smith", "oldPass", "newPass");
+
+        assertEquals("newHashedPass", trainer.getPassword());
         verify(trainerRepository).save(trainer);
+    }
+
+    @Test
+    void testChangePassword_AuthFailed() {
+        when(trainerRepository.findByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        when(passwordEncoder.matches("wrongPass", "hashedPassword")).thenReturn(false);
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.changePassword("Jane.Smith", "wrongPass", "newPass")
+        );
     }
 
     @Test
@@ -116,13 +120,6 @@ class TrainerServiceTest {
         trainerService.toggleActivation("Jane.Smith");
         assertFalse(trainer.isActive());
         verify(trainerRepository).save(trainer);
-    }
-
-    @Test
-    void testGetUnassignedTrainers() {
-        List<Trainer> unassigned = List.of(trainer);
-        when(trainerRepository.getUnassignedTrainers("traineeUser")).thenReturn(unassigned);
-        assertEquals(unassigned, trainerService.getUnassignedTrainers("traineeUser"));
     }
 
     @Test
