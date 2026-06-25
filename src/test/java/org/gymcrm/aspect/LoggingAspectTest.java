@@ -1,8 +1,12 @@
 package org.gymcrm.aspect;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,8 +32,20 @@ class LoggingAspectTest {
     @Mock
     private HttpServletRequest request;
 
-    @InjectMocks
+    private MeterRegistry meterRegistry;
+
     private LoggingAspect loggingAspect;
+
+    @BeforeEach
+    void setUp() {
+        meterRegistry = new SimpleMeterRegistry();
+        loggingAspect = new LoggingAspect(meterRegistry);
+    }
+
+    @AfterEach
+    void tearDown() {
+        RequestContextHolder.resetRequestAttributes();
+    }
 
     @Test
     void logHttpTraffic_Success() throws Throwable {
@@ -42,7 +58,7 @@ class LoggingAspectTest {
         when(signature.getDeclaringType()).thenReturn(Object.class);
         when(signature.getName()).thenReturn("testMethod");
         when(joinPoint.getArgs()).thenReturn(new Object[]{});
-        
+
         ResponseEntity<String> response = ResponseEntity.ok("Success");
         when(joinPoint.proceed()).thenReturn(response);
 
@@ -50,8 +66,7 @@ class LoggingAspectTest {
 
         assertEquals(response, result);
         verify(joinPoint).proceed();
-
-        RequestContextHolder.resetRequestAttributes();
+        assertEquals(1, meterRegistry.timer("gym.custom.business.latency", "uri", "/api/test", "method", "POST").count());
     }
 
     @Test
@@ -64,12 +79,12 @@ class LoggingAspectTest {
         when(joinPoint.getSignature()).thenReturn(signature);
         when(signature.getDeclaringType()).thenReturn(Object.class);
         when(signature.getName()).thenReturn("errorMethod");
-        
+        when(joinPoint.getArgs()).thenReturn(new Object[]{});
+
         RuntimeException ex = new RuntimeException("Error");
         when(joinPoint.proceed()).thenThrow(ex);
 
         assertThrows(RuntimeException.class, () -> loggingAspect.logHttpTraffic(joinPoint));
-
-        RequestContextHolder.resetRequestAttributes();
+        assertEquals(1, meterRegistry.counter("gym.custom.business.errors", "uri", "/api/error", "exception", "RuntimeException").count());
     }
 }
