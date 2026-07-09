@@ -47,7 +47,7 @@ class M2mJwtUtilsTest {
 
     @Test
     void validateToken_WithExpiredToken_ShouldReturnFalse() {
-        String token = createToken("ROLE_SYSTEM", -1000); // Expired 1 second ago
+        String token = createToken("ROLE_SYSTEM", -1000); 
         assertFalse(jwtUtils.validateToken(token));
     }
 
