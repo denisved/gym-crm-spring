@@ -49,16 +49,14 @@ class M2mJwtFilterTest {
 
     @Test
     void doFilterInternal_WithValidToken_ShouldSetAuthentication() throws ServletException, IOException {
-        // Arrange
         String token = "valid.jwt.token";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
         when(jwtUtils.validateToken(token)).thenReturn(true);
         when(jwtUtils.getRoleFromToken(token)).thenReturn("ROLE_SYSTEM");
 
-        // Act
         jwtFilter.doFilterInternal(request, response, filterChain);
 
-        // Assert
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNotNull(authentication);
         assertEquals("system-client", authentication.getPrincipal());
@@ -70,15 +68,15 @@ class M2mJwtFilterTest {
 
     @Test
     void doFilterInternal_WithInvalidToken_ShouldNotSetAuthentication() throws ServletException, IOException {
-        // Arrange
+        
         String token = "invalid.jwt.token";
         when(request.getHeader("Authorization")).thenReturn("Bearer " + token);
         when(jwtUtils.validateToken(token)).thenReturn(false);
 
-        // Act
+        
         jwtFilter.doFilterInternal(request, response, filterChain);
 
-        // Assert
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNull(authentication);
         
@@ -87,13 +85,13 @@ class M2mJwtFilterTest {
 
     @Test
     void doFilterInternal_WithoutAuthorizationHeader_ShouldNotSetAuthentication() throws ServletException, IOException {
-        // Arrange
+        
         when(request.getHeader("Authorization")).thenReturn(null);
 
-        // Act
+        
         jwtFilter.doFilterInternal(request, response, filterChain);
 
-        // Assert
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNull(authentication);
         
@@ -102,13 +100,13 @@ class M2mJwtFilterTest {
 
     @Test
     void doFilterInternal_WithInvalidAuthorizationFormat_ShouldNotSetAuthentication() throws ServletException, IOException {
-        // Arrange
+        
         when(request.getHeader("Authorization")).thenReturn("Basic user:password");
 
-        // Act
+        
         jwtFilter.doFilterInternal(request, response, filterChain);
 
-        // Assert
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         assertNull(authentication);
         

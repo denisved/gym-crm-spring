@@ -42,10 +42,8 @@ class TrainerWorkloadControllerTest {
 
     @Test
     void updateTrainerWorkload_ShouldCallServiceAndReturnOk() {
-        // Act
         ResponseEntity<Void> response = controller.updateTrainerWorkload(request);
 
-        // Assert
         verify(workloadService).processWorkload(request);
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }

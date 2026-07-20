@@ -38,22 +38,17 @@ class WorkloadTransactionFilterTest {
 
     @Test
     void doFilter_WithTransactionIdHeader_ShouldSetMdcAndCallChain() throws IOException, ServletException {
-        // Arrange
         String transactionId = "test-txn-123";
         when(request.getHeader("X-Transaction-Id")).thenReturn(transactionId);
 
-        // Act
         filter.doFilter(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
-        // Because MDC is cleared in the finally block, it should be null here
         assertNull(MDC.get(WorkloadTransactionFilter.TRANSACTION_ID_KEY));
     }
 
     @Test
     void doFilter_WithTransactionIdHeader_MdcIsAvailableDuringChain() throws IOException, ServletException {
-        // Arrange
         String transactionId = "test-txn-123";
         when(request.getHeader("X-Transaction-Id")).thenReturn(transactionId);
         
@@ -62,22 +57,18 @@ class WorkloadTransactionFilterTest {
             return null;
         }).when(filterChain).doFilter(request, response);
 
-        // Act
         filter.doFilter(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
     }
 
     @Test
     void doFilter_WithoutTransactionIdHeader_ShouldCallChainWithoutMdc() throws IOException, ServletException {
-        // Arrange
         when(request.getHeader("X-Transaction-Id")).thenReturn(null);
 
-        // Act
+
         filter.doFilter(request, response, filterChain);
 
-        // Assert
         verify(filterChain).doFilter(request, response);
         assertNull(MDC.get(WorkloadTransactionFilter.TRANSACTION_ID_KEY));
     }

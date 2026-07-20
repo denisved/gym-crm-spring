@@ -2,7 +2,6 @@ package org.gymcrm.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.gymcrm.client.WorkloadServiceClient;
 import org.gymcrm.dto.WorkloadRequest;
 import org.gymcrm.model.Trainee;
 import org.gymcrm.model.Trainer;
@@ -11,7 +10,8 @@ import org.gymcrm.repository.TraineeRepository;
 import org.gymcrm.repository.TrainerRepository;
 import org.gymcrm.repository.TrainingRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,22 +28,22 @@ public class TrainingService {
     private final ValidationService validationService;
 
     
-    private final WorkloadServiceClient workloadServiceClient;
-    private final CircuitBreakerFactory<?, ?> circuitBreakerFactory;
+    private final JmsTemplate jmsTemplate;
+
+    @Value("${jms.queue.workload}")
+    private String workloadQueue;
 
     @Autowired
     public TrainingService(TrainingRepository trainingRepository,
                            TraineeRepository traineeRepository,
                            TrainerRepository trainerRepository,
                            ValidationService validationService,
-                           WorkloadServiceClient workloadServiceClient,
-                           CircuitBreakerFactory<?, ?> circuitBreakerFactory) {
+                           JmsTemplate jmsTemplate) {
         this.trainingRepository = trainingRepository;
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
         this.validationService = validationService;
-        this.workloadServiceClient = workloadServiceClient;
-        this.circuitBreakerFactory = circuitBreakerFactory;
+        this.jmsTemplate = jmsTemplate;
     }
 
     @Transactional
@@ -68,17 +68,16 @@ public class TrainingService {
 
         Training savedTraining = trainingRepository.save(training);
 
-        
         WorkloadRequest workloadRequest = new WorkloadRequest(
                 trainer.getUsername(),
                 trainer.getFirstName(),
                 trainer.getLastName(),
                 trainer.isActive(),
                 savedTraining.getTrainingDate(),
-                savedTraining.getTrainingDuration().intValue(), 
+                savedTraining.getTrainingDuration().intValue(),
                 "ADD"
         );
-        sendWorkloadWithCircuitBreaker(workloadRequest);
+        sendWorkloadToQueue(workloadRequest);
 
         return savedTraining;
     }
@@ -92,7 +91,6 @@ public class TrainingService {
 
         Trainer trainer = training.getTrainer();
 
-        
         WorkloadRequest workloadRequest = new WorkloadRequest(
                 trainer.getUsername(),
                 trainer.getFirstName(),
@@ -102,47 +100,24 @@ public class TrainingService {
                 training.getTrainingDuration().intValue(),
                 "DELETE"
         );
-        sendWorkloadWithCircuitBreaker(workloadRequest);
+        sendWorkloadToQueue(workloadRequest);
 
         trainingRepository.delete(training);
         log.info("Training with ID: {} successfully deleted", trainingId);
     }
 
     
-    private void sendWorkloadWithCircuitBreaker(WorkloadRequest request) {
-        
+    private void sendWorkloadToQueue(WorkloadRequest request) {
         String transactionId = MDC.get("transactionId");
+        log.info("Sending workload update to ActiveMQ queue for trainer: {}", request.getUsername());
 
-        circuitBreakerFactory.create("workloadServiceCircuitBreaker").run(
-                () -> {
-                    
-                    if (transactionId != null) {
-                        MDC.put("transactionId", transactionId);
-                    }
-
-                    try {
-                        log.info("Sending workload update to microservice for trainer: {}", request.getUsername());
-                        workloadServiceClient.updateWorkload(request);
-                        return null;
-                    } finally {
-                        
-                        MDC.remove("transactionId");
-                    }
-                },
-                throwable -> {
-                    
-                    if (transactionId != null) {
-                        MDC.put("transactionId", transactionId);
-                    }
-                    try {
-                        log.error("Circuit Breaker triggered! Unable to send workload update for trainer {}. Reason: {}",
-                                request.getUsername(), throwable.getMessage());
-                        return null;
-                    } finally {
-                        MDC.remove("transactionId");
-                    }
-                }
-        );
+        jmsTemplate.convertAndSend(workloadQueue, request, message -> {
+            
+            if (transactionId != null) {
+                message.setStringProperty("transactionId", transactionId);
+            }
+            return message;
+        });
     }
 
     @Transactional(readOnly = true)

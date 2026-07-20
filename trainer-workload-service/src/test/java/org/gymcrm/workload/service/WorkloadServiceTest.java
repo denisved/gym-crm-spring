@@ -37,10 +37,10 @@ class WorkloadServiceTest {
     @BeforeEach
     void setUp() {
         Calendar calendar = Calendar.getInstance();
-        calendar.set(2023, Calendar.OCTOBER, 15); // October is month 9 in Calendar
+        calendar.set(2023, Calendar.OCTOBER, 15); 
         testDate = calendar.getTime();
         expectedYear = 2023;
-        expectedMonth = 10; // Calendar.MONTH + 1
+        expectedMonth = 10; 
 
         request = new TrainerWorkloadRequest();
         request.setUsername("j.doe");
@@ -53,15 +53,15 @@ class WorkloadServiceTest {
 
     @Test
     void processWorkload_WhenAddAction_ShouldAddNewWorkload() {
-        // Arrange
+        
         request.setActionType(ActionType.ADD);
         when(workloadRepository.findByUsernameAndYearAndMonth("j.doe", expectedYear, expectedMonth))
                 .thenReturn(Optional.empty());
 
-        // Act
+        
         workloadService.processWorkload(request);
 
-        // Assert
+        
         verify(workloadRepository).save(argThat(workload -> 
             workload.getUsername().equals("j.doe") &&
             workload.getFirstName().equals("John") &&
@@ -75,7 +75,7 @@ class WorkloadServiceTest {
 
     @Test
     void processWorkload_WhenAddActionAndExistingWorkload_ShouldIncreaseDuration() {
-        // Arrange
+        
         request.setActionType(ActionType.ADD);
         
         TrainerWorkload existingWorkload = new TrainerWorkload();
@@ -85,10 +85,10 @@ class WorkloadServiceTest {
         when(workloadRepository.findByUsernameAndYearAndMonth("j.doe", expectedYear, expectedMonth))
                 .thenReturn(Optional.of(existingWorkload));
 
-        // Act
+        
         workloadService.processWorkload(request);
 
-        // Assert
+        
         verify(workloadRepository).save(argThat(workload -> 
             workload.getTrainingSummaryDuration() == 180 &&
             workload.getIsActive().equals(true)
@@ -97,7 +97,7 @@ class WorkloadServiceTest {
 
     @Test
     void processWorkload_WhenDeleteAction_ShouldDecreaseDuration() {
-        // Arrange
+        
         request.setActionType(ActionType.DELETE);
         
         TrainerWorkload existingWorkload = new TrainerWorkload();
@@ -107,10 +107,10 @@ class WorkloadServiceTest {
         when(workloadRepository.findByUsernameAndYearAndMonth("j.doe", expectedYear, expectedMonth))
                 .thenReturn(Optional.of(existingWorkload));
 
-        // Act
+        
         workloadService.processWorkload(request);
 
-        // Assert
+        
         verify(workloadRepository).save(argThat(workload -> 
             workload.getTrainingSummaryDuration() == 60
         ));
@@ -118,9 +118,9 @@ class WorkloadServiceTest {
 
     @Test
     void processWorkload_WhenDeleteActionResultsInNegative_ShouldSetDurationToZero() {
-        // Arrange
+        
         request.setActionType(ActionType.DELETE);
-        request.setTrainingDuration(150); // Greater than existing
+        request.setTrainingDuration(150); 
         
         TrainerWorkload existingWorkload = new TrainerWorkload();
         existingWorkload.setUsername("j.doe");
@@ -129,10 +129,10 @@ class WorkloadServiceTest {
         when(workloadRepository.findByUsernameAndYearAndMonth("j.doe", expectedYear, expectedMonth))
                 .thenReturn(Optional.of(existingWorkload));
 
-        // Act
+        
         workloadService.processWorkload(request);
 
-        // Assert
+        
         verify(workloadRepository).save(argThat(workload -> 
             workload.getTrainingSummaryDuration() == 0
         ));
@@ -140,7 +140,7 @@ class WorkloadServiceTest {
 
     @Test
     void processWorkload_WhenIsActiveChanges_ShouldUpdateIsActive() {
-        // Arrange
+        
         request.setActionType(ActionType.ADD);
         request.setIsActive(false);
         
@@ -152,10 +152,10 @@ class WorkloadServiceTest {
         when(workloadRepository.findByUsernameAndYearAndMonth("j.doe", expectedYear, expectedMonth))
                 .thenReturn(Optional.of(existingWorkload));
 
-        // Act
+        
         workloadService.processWorkload(request);
 
-        // Assert
+        
         verify(workloadRepository).save(argThat(workload -> 
             workload.getIsActive().equals(false)
         ));

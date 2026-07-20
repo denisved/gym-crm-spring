@@ -13,11 +13,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.cloud.client.circuitbreaker.CircuitBreaker;
-import org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory;
-import org.gymcrm.client.WorkloadServiceClient;
-import java.util.function.Supplier;
-import java.util.function.Function;
+import org.springframework.jms.core.JmsTemplate;
 
 import java.util.Date;
 import java.util.List;
@@ -39,11 +35,7 @@ class TrainingServiceTest {
     @Mock
     private ValidationService validationService;
     @Mock
-    private WorkloadServiceClient workloadServiceClient;
-    @Mock
-    private CircuitBreakerFactory circuitBreakerFactory;
-    @Mock
-    private CircuitBreaker circuitBreaker;
+    private JmsTemplate jmsTemplate;
 
     @InjectMocks
     private TrainingService trainingService;
@@ -71,12 +63,7 @@ class TrainingServiceTest {
         training.setTrainingDuration(60);
 
         lenient().doNothing().when(validationService).validateTraining(anyString(), any(Date.class), any(Number.class));
-        
-        lenient().when(circuitBreakerFactory.create(anyString())).thenReturn(circuitBreaker);
-        lenient().when(circuitBreaker.run(any(Supplier.class), any(Function.class))).thenAnswer(invocation -> {
-            Supplier<?> supplier = invocation.getArgument(0);
-            return supplier.get();
-        });
+
     }
 
     @Test
