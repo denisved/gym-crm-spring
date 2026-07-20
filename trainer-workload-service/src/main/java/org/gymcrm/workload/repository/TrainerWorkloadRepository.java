@@ -1,12 +1,12 @@
 package org.gymcrm.workload.repository;
 
 import org.gymcrm.workload.model.TrainerWorkload;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 
 @Repository
-public interface TrainerWorkloadRepository extends JpaRepository<TrainerWorkload, Long> {
-    Optional<TrainerWorkload> findByUsernameAndYearAndMonth(String username, Integer year, Integer month);
+public interface TrainerWorkloadRepository extends MongoRepository<TrainerWorkload, String> {
+    Optional<TrainerWorkload> findByUsername(String username);
 }
