@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  
+  postgres-db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: 
+      POSTGRES_PASSWORD: 
+      POSTGRES_DB: gym_crm_dev
+    ports:
+      - "5432:5432"
+    networks:
+      - gym-network
+
+  activemq:
+    image: rmohr/activemq:latest
+    ports:
+      - "61616:61616" 
+      - "8161:8161"   
+    networks:
+      - gym-network
+
+  main-app:
+    image: gym-main-app:latest 
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=
+      - SPRING_DATASOURCE_USERNAME=
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_ACTIVEMQ_BROKER_URL=tcp://activemq:61616
+      - EUREKA_CLIENT_ENABLED=false
+    depends_on:
+      - postgres-db
+      - activemq
+    networks:
+      - gym-network
+
+  workload-app:
+    image: gym-workload-app:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATA_MONGODB_URI=
+      - SPRING_DATA_MONGODB_DATABASE=
+      - SPRING_ACTIVEMQ_BROKER_URL=tcp://activemq:61616
+      - EUREKA_CLIENT_ENABLED=false
+    depends_on:
+      - activemq
+    networks:
+      - gym-network
+
+networks:
+  gym-network:
+    driver: bridge
